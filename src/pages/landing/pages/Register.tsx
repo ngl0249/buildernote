@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "firebase/auth"
 import { auth } from "../../../lib/firebase/firebase"
+import { useAuth } from "../../backend/hooks/useAuth"
 import logo from "/landingimg/navbar/navlogo.webp"
 
 const googleProvider = new GoogleAuthProvider()
@@ -18,16 +19,24 @@ const GoogleIcon = () => (
 
 const Register = () => {
   const navigate = useNavigate()
+  const { user, loading } = useAuth()
+
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName]   = useState("")
   const [email, setEmail]         = useState("")
   const [password, setPassword]   = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [agreedTerms, setAgreedTerms]   = useState(false)
-  const [wantsUpdates, setWantsUpdates] = useState(false)
-  const [loading, setLoading]           = useState(false)
+  const [showPassword, setShowPassword]   = useState(false)
+  const [agreedTerms, setAgreedTerms]     = useState(false)
+  const [wantsUpdates, setWantsUpdates]   = useState(false)
+  const [formLoading, setFormLoading]     = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true })
+    }
+  }, [user, loading, navigate])
 
   const ERROR_MAP: Record<string, string> = {
     "auth/email-already-in-use": "An account with this email already exists.",
@@ -37,10 +46,10 @@ const Register = () => {
 
   const handleRegister = async () => {
     setError("")
-    if (!firstName)           { setError("Please enter your first name."); return }
-    if (!email || !password)  { setError("Please fill in all fields."); return }
-    if (!agreedTerms)         { setError("Please agree to the terms and privacy policy."); return }
-    setLoading(true)
+    if (!firstName)          { setError("Please enter your first name."); return }
+    if (!email || !password) { setError("Please fill in all fields."); return }
+    if (!agreedTerms)        { setError("Please agree to the terms and privacy policy."); return }
+    setFormLoading(true)
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: `${firstName} ${lastName}`.trim() })
@@ -48,7 +57,7 @@ const Register = () => {
     } catch (err: any) {
       setError(ERROR_MAP[err.code] ?? "Something went wrong. Please try again.")
     } finally {
-      setLoading(false)
+      setFormLoading(false)
     }
   }
 
@@ -66,6 +75,8 @@ const Register = () => {
       setGoogleLoading(false)
     }
   }
+
+  if (loading) return null
 
   return (
     <div className="min-h-screen bg-[#1e2433] flex items-center justify-center px-4 py-10">
@@ -104,7 +115,6 @@ const Register = () => {
               type="text"
               value={firstName}
               onChange={e => { setFirstName(e.target.value); setError("") }}
-              placeholder=""
               className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/10 transition-all"
             />
           </div>
@@ -114,7 +124,6 @@ const Register = () => {
               type="text"
               value={lastName}
               onChange={e => { setLastName(e.target.value); setError("") }}
-              placeholder=""
               className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/10 transition-all"
             />
           </div>
@@ -127,7 +136,6 @@ const Register = () => {
             value={email}
             onChange={e => { setEmail(e.target.value); setError("") }}
             onKeyDown={e => e.key === "Enter" && handleRegister()}
-            placeholder=""
             className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/10 transition-all"
           />
         </div>
@@ -140,7 +148,6 @@ const Register = () => {
               value={password}
               onChange={e => { setPassword(e.target.value); setError("") }}
               onKeyDown={e => e.key === "Enter" && handleRegister()}
-              placeholder=""
               className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/10 transition-all"
             />
             <button
@@ -154,7 +161,7 @@ const Register = () => {
         </div>
 
         <div className="space-y-3 mb-5">
-          <label className="flex items-start gap-2.5 cursor-pointer group">
+          <label className="flex items-start gap-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={agreedTerms}
@@ -168,7 +175,7 @@ const Register = () => {
               <span className="underline cursor-pointer text-gray-700">privacy policy</span>
             </span>
           </label>
-          <label className="flex items-start gap-2.5 cursor-pointer group">
+          <label className="flex items-start gap-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={wantsUpdates}
@@ -190,10 +197,10 @@ const Register = () => {
 
         <button
           onClick={handleRegister}
-          disabled={loading}
+          disabled={formLoading}
           className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-lg transition-colors"
         >
-          {loading ? <Loader2 size={16} className="animate-spin" /> : "Register"}
+          {formLoading ? <Loader2 size={16} className="animate-spin" /> : "Register"}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-5">

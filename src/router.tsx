@@ -9,6 +9,16 @@ import Dashboard   from "./pages/backend/dashboard/dashboard"
 import ProfilePage from "./pages/backend/profile/ProfilePage"
 import BoardPage   from "./pages/backend/dashboard/board/BoardPage"
 import NotFound    from "./pages/landing/components/NotFound"
+import Privacy from "./pages/landing/undersider/Privacy"
+import Terms from "./pages/landing/undersider/Terms"
+import Guides from "./pages/landing/undersider/Guides"
+import Produktoversigt from "./pages/landing/undersider/Produktoversigt"
+import Hjaelpecenter from "./pages/landing/undersider/Hjaelpecenter"
+import Priser from "./pages/landing/undersider/Priser"
+import Kommende from "./pages/landing/undersider/Kommende"
+import Status from "./pages/landing/undersider/Status"
+import Team from "./pages/landing/undersider/Team"
+import ResetPassword from "./pages/landing/undersider/ResetPassword"
 
 const DashboardRedirect = () => {
   const [user, loading] = useAuthState(auth)
@@ -47,6 +57,17 @@ const router = createBrowserRouter([
       { index: true,       element: <Landing /> },        
       { path: "login",     element: <Login /> },
       { path: "register",  element: <Register /> },
+      { path: "/privacy", element: <Privacy /> },
+      { path: "/terms", element: <Terms /> },
+      { path: "guides",           element: <Guides /> },
+      { path: "productoverview",  element: <Produktoversigt /> },
+      { path: "hjaelpecenter",    element: <Hjaelpecenter /> },
+      { path: "prices",           element: <Priser /> },
+      { path: "upgrade",           element: <Priser /> },
+      { path: "forthcoming",         element: <Kommende /> },
+      { path: "status",           element: <Status />},
+      { path: "reset",            element: <ResetPassword />},
+      {path:  "team",             element: <Team />},
       { path: "dashboard", element: <PrivateRoute><DashboardRedirect /></PrivateRoute> },
       {
         path: ":username",
@@ -56,6 +77,7 @@ const router = createBrowserRouter([
           { path: "profile",          element: <PrivateRoute><ProfilePage /></PrivateRoute> },
           { path: "board/:boardSlug", element: <PrivateRoute><BoardPage /></PrivateRoute> },
           { path: "*",                element: <NotFound /> },
+
         ],
       },
       { path: "*", element: <NotFound /> },

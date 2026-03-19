@@ -126,7 +126,7 @@ export default function Members({ currentUserUid }: { currentUserUid: string }) 
   })
 
   return (
-    <div className="flex flex-col h-full bg-[#eeeee9] font-sans">
+    <div className="flex flex-col h-full bg-[#eaeaea] font-sans">
 
       <div className="px-8 py-6 border-b border-stone-200/80 shrink-0">
         <div className="flex items-center gap-3 mb-1">
@@ -180,7 +180,7 @@ export default function Members({ currentUserUid }: { currentUserUid: string }) 
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-stone-200 ">
-            <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-stone-100 bg-stone-50">
+            <div className="grid grid-cols-[48px_1fr_1fr_120px] gap-4 px-5 py-3 border-b border-stone-100 bg-stone-50">
               <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider w-8" />
               <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Member</span>
               <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Email</span>
@@ -192,7 +192,7 @@ export default function Members({ currentUserUid }: { currentUserUid: string }) 
               return (
                 <div
                   key={member.uid}
-                  className={`grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-5 py-3.5 items-center ${
+                  className={`grid grid-cols-[48px_1fr_1fr_120px] gap-4 px-5 py-3.5 items-center ${
                     i !== filtered.length - 1 ? "border-b border-stone-100" : ""
                   } hover:bg-stone-50/60 transition-colors`}
                 >

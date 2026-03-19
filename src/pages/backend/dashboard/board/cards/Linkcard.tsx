@@ -26,7 +26,7 @@ const LinkCard = ({ card, onUpdate, onDelete, onMouseDown }: Props) => {
       className="absolute group"
       style={{ left: card.x, top: card.y, width: card.width }}
     >
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:border-gray-300 transition-all">
+      <div className="bg-[#252d3d] rounded-2xl shadow-sm border border-gray-200 hover:border-gray-300 transition-all">
         <div
           onMouseDown={onMouseDown}
           className="flex items-center justify-between px-3 pt-2.5 pb-1 cursor-grab active:cursor-grabbing"

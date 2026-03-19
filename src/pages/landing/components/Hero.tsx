@@ -61,9 +61,9 @@ const Hero = () => {
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: "Visual boards", sub: "Freeform canvas", color: "bg-orange-500" },
-              { label: "Task tracking", sub: "To-do lists",     color: "bg-emerald-500" },
-              { label: "Team collab",   sub: "Real-time sync",  color: "bg-sky-500" },
-              { label: "Code & docs",   sub: "Built for devs",  color: "bg-violet-500" },
+              { label: "Task tracking", sub: "To-do lists", color: "bg-emerald-500" },
+              { label: "Team collab", sub: "Real-time sync", color: "bg-sky-500" },
+              { label: "Code & docs", sub: "Built for devs", color: "bg-violet-500" },
             ].map(item => (
               <div key={item.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
                 <div className={`w-8 h-8 rounded-lg ${item.color} mb-3`} />
@@ -74,15 +74,15 @@ const Hero = () => {
           </div>
         </div>
 
-      </div>
 
-      <div className="relative overflow-hidden hidden md:block" style={{ height: "140px", marginTop: "-1px" }}>
-        <div className="absolute inset-0 bg-[#1e2433]" />
-        <svg viewBox="0 0 1440 140" className="absolute inset-0 w-full h-full" preserveAspectRatio="none" style={{ display: "block" }}>
-          <polygon points="-2,142 1442,30 1442,142" fill="white" />
-        </svg>
-      </div>
 
+        <div className="relative overflow-hidden hidden md:block" style={{ height: "120px",}}>
+          <div className="absolute inset-0 " />
+          <svg viewBox="0 0 1440 180" className="absolute inset-0 w-full h-full" preserveAspectRatio="none" style={{ display: "block" }}>
+            <polygon points="0,180 1440,0 1440,180" fill="white" />
+          </svg>
+        </div>
+      </div>
       <div className="md:hidden h-8 bg-[#1e2433]" />
 
       <div className="bg-white h-4" />

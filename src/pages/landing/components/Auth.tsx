@@ -1,12 +1,15 @@
 import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react"
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  updateProfile,
 } from "firebase/auth"
-import { auth } from "../../../lib/firebase/firebase"
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
+import { auth, db } from "../../../lib/firebase/firebase"
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -20,35 +23,24 @@ const Background = () => (
       </defs>
       <rect width="100%" height="100%" fill="url(#grid)" />
     </svg>
-
     <svg className="absolute -top-16 -left-16 w-72 h-72 opacity-20" viewBox="0 0 200 200">
       <circle cx="100" cy="100" r="80" fill="none" stroke="#f97316" strokeWidth="1.5" />
       <circle cx="100" cy="100" r="55" fill="none" stroke="#f97316" strokeWidth="1" />
       <circle cx="100" cy="100" r="30" fill="none" stroke="#f97316" strokeWidth="0.8" />
     </svg>
-
     <svg className="absolute top-10 right-10 w-40 h-40 opacity-[0.15]" viewBox="0 0 100 100">
       <rect x="15" y="15" width="70" height="70" fill="none" stroke="#1e2433" strokeWidth="2" transform="rotate(20 50 50)" />
       <rect x="25" y="25" width="50" height="50" fill="none" stroke="#1e2433" strokeWidth="1.5" transform="rotate(20 50 50)" />
     </svg>
-
     <svg className="absolute bottom-16 left-8 w-48 h-48 opacity-[0.22]" viewBox="0 0 100 100">
       {[...Array(25)].map((_, i) => (
-        <circle
-          key={i}
-          cx={(i % 5) * 22 + 5}
-          cy={Math.floor(i / 5) * 22 + 5}
-          r="2"
-          fill="#f97316"
-        />
+        <circle key={i} cx={(i % 5) * 22 + 5} cy={Math.floor(i / 5) * 22 + 5} r="2" fill="#f97316" />
       ))}
     </svg>
-
     <svg className="absolute -bottom-8 -right-8 w-64 h-64 opacity-[0.13]" viewBox="0 0 200 200">
       <polygon points="100,10 190,180 10,180" fill="none" stroke="#1e2433" strokeWidth="2" />
       <polygon points="100,40 170,170 30,170" fill="none" stroke="#1e2433" strokeWidth="1" />
     </svg>
-
     <div className="absolute top-1/3 left-16 w-3 h-3 rounded-full bg-orange-400 opacity-60" />
     <div className="absolute top-2/3 right-24 w-2 h-2 rounded-full bg-orange-500 opacity-50" />
     <div className="absolute top-1/4 right-1/3 w-1.5 h-1.5 rounded-full bg-orange-400 opacity-40" />
@@ -66,7 +58,13 @@ const GoogleIcon = () => (
 
 type Mode = "login" | "signup"
 
+function generateUsername(displayName: string, uid: string): string {
+  const base = displayName.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")
+  return (base || "user") + uid.slice(0, 4)
+}
+
 const Auth = () => {
+  const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>("signup")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -79,6 +77,25 @@ const Auth = () => {
 
   const clearError = () => setError("")
 
+  const createUserDoc = async (uid: string, displayName: string, email: string) => {
+    const userRef = doc(db, "users", uid)
+    const existing = await getDoc(userRef)
+    if (!existing.exists()) {
+      const username = generateUsername(displayName, uid)
+      await setDoc(userRef, {
+        uid,
+        displayName,
+        username,
+        email,
+        avatarUrl: "",
+        role: "Default",
+        createdAt: serverTimestamp(),
+      })
+      return username
+    }
+    return existing.data().username ?? uid
+  }
+
   const handleEmailAuth = async () => {
     setError("")
     if (!email || !password) { setError("Please fill in all fields."); return }
@@ -86,9 +103,14 @@ const Auth = () => {
     setLoading(true)
     try {
       if (mode === "signup") {
-        await createUserWithEmailAndPassword(auth, email, password)
+        const cred = await createUserWithEmailAndPassword(auth, email, password)
+        const displayName = [firstName, lastName].filter(Boolean).join(" ")
+        await updateProfile(cred.user, { displayName })
+        const username = await createUserDoc(cred.user.uid, displayName, email)
+        navigate(`/${username}/home`, { replace: true })
       } else {
         await signInWithEmailAndPassword(auth, email, password)
+        navigate("/dashboard", { replace: true })
       }
     } catch (err: any) {
       const msg: Record<string, string> = {
@@ -109,7 +131,10 @@ const Auth = () => {
     setError("")
     setGoogleLoading(true)
     try {
-      await signInWithPopup(auth, googleProvider)
+      const cred = await signInWithPopup(auth, googleProvider)
+      const { uid, displayName, email } = cred.user
+      const username = await createUserDoc(uid, displayName ?? "User", email ?? "")
+      navigate(`/${username}/home`, { replace: true })
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") {
         setError("Google sign-in failed. Please try again.")
@@ -126,7 +151,6 @@ const Auth = () => {
       <Background />
 
       <div className="relative z-10 w-full max-w-[400px] bg-white rounded-2xl border border-gray-100 px-8 py-9">
-
         <div className="text-center mb-7">
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">
             {isLogin ? "Welcome back" : "Try Buildernote today"}
@@ -198,9 +222,9 @@ const Auth = () => {
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs font-medium text-gray-600">Password</label>
             {isLogin && (
-              <button className="text-xs text-orange-500 hover:text-orange-600 transition-colors">
+              <Link to="/reset" className="text-xs text-orange-500 hover:text-orange-600 transition-colors">
                 Forgot password?
-              </button>
+              </Link>
             )}
           </div>
           <div className="relative">
@@ -236,10 +260,7 @@ const Auth = () => {
         >
           {loading
             ? <Loader2 size={16} className="animate-spin" />
-            : <>
-                {isLogin ? "Sign in" : "Sign up for free"}
-                <ArrowRight size={15} />
-              </>
+            : <>{isLogin ? "Sign in" : "Sign up for free"}<ArrowRight size={15} /></>
           }
         </button>
 

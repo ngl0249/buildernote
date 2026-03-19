@@ -20,9 +20,10 @@ export interface Board {
   order:     number
   createdAt: number
   updatedAt: number
+  
 }
 
-export type CardType = "note" | "todo" | "link" | "heading"
+export type CardType = "note" | "todo" | "link" | "heading" | "color" | "document" | "column" | "table" | "comment"
 
 export interface BoardCard {
   id:        string
@@ -33,6 +34,7 @@ export interface BoardCard {
   x:         number
   y:         number
   width:     number
+  height:    number
   order:     number
   createdAt: number
   updatedAt: number

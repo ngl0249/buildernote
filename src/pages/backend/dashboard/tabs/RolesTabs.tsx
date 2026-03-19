@@ -1,10 +1,3 @@
-/**
- * @copyright 2026 bodywarn
- * @copyright Code Stack ApS
- *
- * RoleTabs.tsx — Role-specific tab views.
- */
-
 import {
   Code2, MessageSquareWarning, Sparkles,
   BarChart2, Activity, FileCode2,
@@ -12,7 +5,6 @@ import {
 } from "lucide-react"
 import Members from "./OwnerTabs/Members"
 
-// ─── Shared ───────────────────────────────────────────────────────────────────
 
 function StatCard({ icon, label, value, accent }: {
   icon: React.ReactNode; label: string; value: string; accent: string
@@ -52,13 +44,11 @@ function ComingSoon({ label }: { label: string }) {
   )
 }
 
-// ─── Admin: Members ───────────────────────────────────────────────────────────
 
 export function AdminMembersTab({ currentUserUid }: { currentUserUid: string }) {
   return <Members currentUserUid={currentUserUid} />
 }
 
-// ─── Admin: Overview ─────────────────────────────────────────────────────────
 
 export function AdminOverviewTab() {
   return (
@@ -89,7 +79,6 @@ export function AdminOverviewTab() {
   )
 }
 
-// ─── Developer tab ────────────────────────────────────────────────────────────
 
 export function DeveloperTab() {
   return (
@@ -123,7 +112,6 @@ export function DeveloperTab() {
   )
 }
 
-// ─── Moderator tab ────────────────────────────────────────────────────────────
 
 export function ModeratorTab() {
   return (
@@ -156,7 +144,6 @@ export function ModeratorTab() {
   )
 }
 
-// ─── Pro tab ──────────────────────────────────────────────────────────────────
 
 export function ProTab() {
   return (

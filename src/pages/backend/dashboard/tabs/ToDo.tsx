@@ -317,7 +317,8 @@ function KanbanColumn({
               key={todo.id}
               draggable
               onDragStart={() => onDragStart(todo.id, col.key)}
-              className={`group rounded-xl border transition-all duration-150 cursor-pointer bg-white ${
+              className={`group rounded-xl border transition-all duration-150 cursor-pointer bg-[#252d3d] ${
+
                 isExp
                   ? "border-stone-300 shadow-sm"
                   : "border-stone-200 hover:border-stone-300 hover:shadow-sm"
@@ -328,11 +329,11 @@ function KanbanColumn({
                 <div className="flex items-start gap-2">
                   <Grip size={12} className="text-stone-300 mt-0.5 shrink-0 cursor-grab" />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium leading-snug ${todo.status === "done" ? "line-through text-stone-300" : "text-stone-700"}`}>
+                    <p className={`text-sm font-medium leading-snug ${todo.status === "done" ? "line-through text-white" : "text-white"}`}>
                       {todo.title}
                     </p>
                     {todo.description && !isExp && (
-                      <p className="text-[11px] text-stone-400 mt-0.5 line-clamp-1">{todo.description}</p>
+                      <p className="text-[11px] text-white mt-0.5 line-clamp-1">{todo.description}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <div className="flex items-center gap-1">
@@ -356,7 +357,7 @@ function KanbanColumn({
                   onClick={e => e.stopPropagation()}
                 >
                   {todo.description && (
-                    <p className="text-xs text-stone-500 leading-relaxed">{todo.description}</p>
+                    <p className="text-xs text-white leading-relaxed">{todo.description}</p>
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -530,7 +531,7 @@ export default function Todo() {
 
   if (view === "boards") {
     return (
-      <div className="flex flex-col h-full bg-[#eeeee9] font-sans">
+      <div className="flex flex-col h-full bg-[#eaeaea] font-sans">
         <div className="px-8 py-6 border-b border-stone-200/80 shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-stone-800">Boards</h1>
@@ -619,7 +620,7 @@ export default function Todo() {
 
   if (view === "board-detail" && board) {
     return (
-      <div className="flex flex-col h-full bg-[#eeeee9] font-sans">
+      <div className="flex flex-col h-full bg-[#eaeaea] font-sans">
         <div className="px-8 py-5 border-b border-stone-200/80 shrink-0 flex items-center gap-4">
           <button
             onClick={() => setView("boards")}

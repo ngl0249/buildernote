@@ -122,7 +122,7 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f0ed] flex items-center justify-center">
+      <div className="min-h-screen bg-[#eaeaea] flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -131,7 +131,7 @@ const ProfilePage = () => {
   const currentAvatar = previewUrl || avatarUrl
 
   return (
-    <div className="min-h-screen bg-[#f0f0ed]">
+    <div className="min-h-screen bg-[#eaeaea]">
       <div className="h-12 bg-white border-b border-gray-200 flex items-center px-4">
         <button
           onClick={() => navigate(`/${handle}/home`)}

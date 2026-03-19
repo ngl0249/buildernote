@@ -36,6 +36,12 @@ export const useBoardCards = (uid: string | undefined, boardId: string | undefin
       heading: { content: "New heading", width: 320 },
       todo:    { content: "New task", checked: [false], width: 280 },
       link:    { content: "", title: "Link", width: 280 },
+      color:    { content: "", title: "color", width: 280 },
+      comment:    { content: "", title: "comment", width: 280 },
+      column:    { content: "", title: "colum", width: 280 },
+      document:    { content: "", title: "document", width: 280 },
+      table:    { content: "", title: "table", width: 280 },
+      
     }
 
     await addDoc(colRef, {

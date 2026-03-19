@@ -50,7 +50,7 @@ const TodoCard = ({ card, onUpdate, onDelete, onMouseDown }: Props) => {
       className="absolute group"
       style={{ left: card.x, top: card.y, width: card.width }}
     >
-      <div className={`bg-white rounded-2xl shadow-sm border transition-all ${focused ? "border-orange-300 shadow-md" : "border-gray-200 hover:border-gray-300"}`}>
+      <div className={`bg-[#252d3d] rounded-2xl shadow-sm border transition-all ${focused ? "border-orange-300 shadow-md" : "border-gray-200 hover:border-gray-300"}`}>
         <div
           onMouseDown={onMouseDown}
           className="flex items-center justify-between px-3 pt-2.5 pb-2 cursor-grab active:cursor-grabbing border-b border-gray-100"

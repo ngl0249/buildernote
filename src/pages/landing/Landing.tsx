@@ -8,7 +8,7 @@ import Cookies from "./components/Cookies"
 
 const Landing = () => {
   return (
-    <div className="min-h-screen">
+    <div className="bg-white min-h-screen">
       <Header />
       <Hero />
       <About />

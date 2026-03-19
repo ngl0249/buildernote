@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 import { auth } from "../../../lib/firebase/firebase"
+import { useAuth } from "../../backend/hooks/useAuth"
 import logo from "/landingimg/navbar/navlogo.webp"
 
 const googleProvider = new GoogleAuthProvider()
@@ -18,32 +19,40 @@ const GoogleIcon = () => (
 
 const Login = () => {
   const navigate = useNavigate()
+  const { user, loading } = useAuth()
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [formLoading, setFormLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState("")
 
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true })
+    }
+  }, [user, loading, navigate])
+
   const ERROR_MAP: Record<string, string> = {
-    "auth/user-not-found":    "No account found with this email.",
-    "auth/wrong-password":    "Incorrect password. Please try again.",
-    "auth/invalid-credential":"Incorrect email or password.",
-    "auth/invalid-email":     "Please enter a valid email address.",
-    "auth/too-many-requests": "Too many attempts. Please try again later.",
+    "auth/user-not-found":     "No account found with this email.",
+    "auth/wrong-password":     "Incorrect password. Please try again.",
+    "auth/invalid-credential": "Incorrect email or password.",
+    "auth/invalid-email":      "Please enter a valid email address.",
+    "auth/too-many-requests":  "Too many attempts. Please try again later.",
   }
 
   const handleLogin = async () => {
     setError("")
     if (!email || !password) { setError("Please fill in all fields."); return }
-    setLoading(true)
+    setFormLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email, password)
       navigate("/dashboard")
     } catch (err: any) {
       setError(ERROR_MAP[err.code] ?? "Something went wrong. Please try again.")
     } finally {
-      setLoading(false)
+      setFormLoading(false)
     }
   }
 
@@ -61,6 +70,8 @@ const Login = () => {
       setGoogleLoading(false)
     }
   }
+
+  if (loading) return null
 
   return (
     <div className="min-h-screen bg-[#1e2433] flex items-center justify-center px-4 py-10">
@@ -98,7 +109,6 @@ const Login = () => {
             value={email}
             onChange={e => { setEmail(e.target.value); setError("") }}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
-            placeholder=""
             className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/10 transition-all"
           />
         </div>
@@ -106,9 +116,9 @@ const Login = () => {
         <div className="mb-5">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-gray-700">Password</label>
-            <button className="text-sm text-orange-500 hover:text-orange-600 transition-colors">
+            <Link to="/reset" className="text-sm text-orange-500 hover:text-orange-600 transition-colors">
               Forgot your password?
-            </button>
+            </Link>
           </div>
           <div className="relative">
             <input
@@ -116,7 +126,6 @@ const Login = () => {
               value={password}
               onChange={e => { setPassword(e.target.value); setError("") }}
               onKeyDown={e => e.key === "Enter" && handleLogin()}
-              placeholder=""
               className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/10 transition-all"
             />
             <button
@@ -137,10 +146,10 @@ const Login = () => {
 
         <button
           onClick={handleLogin}
-          disabled={loading}
+          disabled={formLoading}
           className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-lg transition-colors"
         >
-          {loading ? <Loader2 size={16} className="animate-spin" /> : "Log in"}
+          {formLoading ? <Loader2 size={16} className="animate-spin" /> : "Log in"}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-5">

@@ -15,28 +15,28 @@ const BuilderNoteIcon = () => (
 
 const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
   {
-    heading: "Kom i gang",
+    heading: "Get started",
     items: [
-      { label: "Guides",          href: "#" },
-      { label: "Inspiration",     href: "#" },
-      { label: "Produktoversigt", href: "#" },
+      { label: "Guides",          href: "/guides" },
+      { label: "Product overview", href: "/productoverview" },
     ],
   },
   {
     heading: "Support",
     items: [
-      { label: "Hjælpecenter",         href: "#" },
-      { label: "Planer & priser",      href: "#" },
-      { label: "Kommende funktioner",  href: "#" },
-      { label: "Applikationsstatus",   href: "#" },
+      { label: "Help center",        href: "/hjaelpecenter" },
+      { label: "Plans and prices",     href: "/prices" },
+      { label: "Upcoming features", href: "/forthcoming" },
+      { label: "Application status",  href: "/status" },
     ],
   },
   {
-    heading: "Virksomhed",
+    heading: "Company",
     items: [
-      { label: "info@buildernote.com", href: "mailto:info@buildernote.com" },
-      { label: "Privatlivspolitik",    href: "#" },
-      { label: "Servicevilkår",        href: "#" },
+      { label: "infobuildernote@gmail.com", href: "mailto:infobuildernote@gmail.com" },
+      { label: "Team",                 href: "/team"},
+      { label: "Privacy policy",    href: "/privacy" },
+      { label: "Terms of Service",        href: "/terms" },
     ],
   },
 ]
@@ -62,7 +62,7 @@ const Footer = () => (
             <span className="text-white font-bold text-lg tracking-tight">BuilderNote</span>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Det intelligente workspace til dem der bygger. Organiser ideer, projekter og noter — ét sted.
+            The intelligent workspace for builders. Organize ideas, projects, and notes — all in one place.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ const Footer = () => (
         </div>
 
         <p className="text-xs text-gray-600">
-          © {new Date().getFullYear()} BuilderNote. Alle rettigheder forbeholdes.
+          © {new Date().getFullYear()} BuilderNote. All rights reserved.
         </p>
       </div>
 
