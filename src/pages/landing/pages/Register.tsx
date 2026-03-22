@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "firebase/auth"
-import { auth } from "../../../lib/firebase/firebase"
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
+import { auth, db } from "../../../lib/firebase/firebase"
 import { useAuth } from "../../backend/hooks/useAuth"
 import logo from "/landingimg/navbar/navlogo.webp"
 
@@ -16,6 +17,11 @@ const GoogleIcon = () => (
     <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
   </svg>
 )
+
+function generateUsername(displayName: string, uid: string): string {
+  const base = displayName.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")
+  return (base || "user") + uid.slice(0, 4)
+}
 
 const Register = () => {
   const navigate = useNavigate()
@@ -38,6 +44,32 @@ const Register = () => {
     }
   }, [user, loading, navigate])
 
+  const createUserDoc = async (
+    uid: string,
+    displayName: string,
+    email: string,
+    avatarUrl: string = "",
+  ): Promise<string> => {
+    const userRef = doc(db, "users", uid)
+    const existing = await getDoc(userRef)
+    if (!existing.exists()) {
+      const username = generateUsername(displayName, uid)
+      await setDoc(userRef, {
+        uid,
+        displayName,
+        username,
+        email,
+        avatarUrl,
+        role:       "Default",
+        createdAt:  serverTimestamp(),
+        lastLogin:  Date.now(),
+        loginCount: 1,
+      })
+      return username
+    }
+    return existing.data().username ?? uid.slice(0, 8)
+  }
+
   const ERROR_MAP: Record<string, string> = {
     "auth/email-already-in-use": "An account with this email already exists.",
     "auth/invalid-email":        "Please enter a valid email address.",
@@ -51,9 +83,14 @@ const Register = () => {
     if (!agreedTerms)        { setError("Please agree to the terms and privacy policy."); return }
     setFormLoading(true)
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password)
-      await updateProfile(cred.user, { displayName: `${firstName} ${lastName}`.trim() })
-      navigate("/dashboard")
+      const cred        = await createUserWithEmailAndPassword(auth, email, password)
+      const displayName = [firstName, lastName].filter(Boolean).join(" ")
+
+      await updateProfile(cred.user, { displayName })
+
+      const username = await createUserDoc(cred.user.uid, displayName, email)
+
+      navigate(`/${username}/home`, { replace: true })
     } catch (err: any) {
       setError(ERROR_MAP[err.code] ?? "Something went wrong. Please try again.")
     } finally {
@@ -65,8 +102,15 @@ const Register = () => {
     setError("")
     setGoogleLoading(true)
     try {
-      await signInWithPopup(auth, googleProvider)
-      navigate("/dashboard")
+      const cred = await signInWithPopup(auth, googleProvider)
+      const { uid, displayName, email, photoURL } = cred.user
+      const username = await createUserDoc(
+        uid,
+        displayName ?? "User",
+        email ?? "",
+        photoURL ?? "",
+      )
+      navigate(`/${username}/home`, { replace: true })
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") {
         setError("Google sign-up failed. Please try again.")

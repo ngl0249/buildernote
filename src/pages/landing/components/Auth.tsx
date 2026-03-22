@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   updateProfile,
 } from "firebase/auth"
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase/firebase"
 
 const googleProvider = new GoogleAuthProvider()
@@ -63,38 +63,56 @@ function generateUsername(displayName: string, uid: string): string {
   return (base || "user") + uid.slice(0, 4)
 }
 
+async function createUserDoc(
+  uid: string,
+  displayName: string,
+  email: string,
+  avatarUrl: string = "",
+): Promise<string> {
+  const userRef = doc(db, "users", uid)
+  const existing = await getDoc(userRef)
+
+  if (!existing.exists()) {
+    const username = generateUsername(displayName, uid)
+    await setDoc(userRef, {
+      uid,
+      displayName,
+      username,
+      email,
+      avatarUrl,
+      role:       "Default",
+      createdAt:  serverTimestamp(),
+      lastLogin:  Date.now(),
+      loginCount: 1,
+    })
+    return username
+  }
+
+  await updateDoc(userRef, {
+    lastLogin:  Date.now(),
+    loginCount: increment(1),
+  })
+  return existing.data().username ?? uid.slice(0, 8)
+}
+
+async function getUsernameForUid(uid: string): Promise<string> {
+  const snap = await getDoc(doc(db, "users", uid))
+  return snap.exists() ? (snap.data().username ?? uid.slice(0, 8)) : uid.slice(0, 8)
+}
+
 const Auth = () => {
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>("signup")
   const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [lastName, setLastName]   = useState("")
+  const [email, setEmail]         = useState("")
+  const [password, setPassword]   = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]           = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState("")
 
   const clearError = () => setError("")
-
-  const createUserDoc = async (uid: string, displayName: string, email: string) => {
-    const userRef = doc(db, "users", uid)
-    const existing = await getDoc(userRef)
-    if (!existing.exists()) {
-      const username = generateUsername(displayName, uid)
-      await setDoc(userRef, {
-        uid,
-        displayName,
-        username,
-        email,
-        avatarUrl: "",
-        role: "Default",
-        createdAt: serverTimestamp(),
-      })
-      return username
-    }
-    return existing.data().username ?? uid
-  }
 
   const handleEmailAuth = async () => {
     setError("")
@@ -103,23 +121,24 @@ const Auth = () => {
     setLoading(true)
     try {
       if (mode === "signup") {
-        const cred = await createUserWithEmailAndPassword(auth, email, password)
+        const cred        = await createUserWithEmailAndPassword(auth, email, password)
         const displayName = [firstName, lastName].filter(Boolean).join(" ")
         await updateProfile(cred.user, { displayName })
         const username = await createUserDoc(cred.user.uid, displayName, email)
         navigate(`/${username}/home`, { replace: true })
       } else {
-        await signInWithEmailAndPassword(auth, email, password)
-        navigate("/dashboard", { replace: true })
+        const cred     = await signInWithEmailAndPassword(auth, email, password)
+        const username = await getUsernameForUid(cred.user.uid)
+        navigate(`/${username}/home`, { replace: true })
       }
     } catch (err: any) {
       const msg: Record<string, string> = {
         "auth/email-already-in-use": "An account with this email already exists.",
-        "auth/invalid-email": "Please enter a valid email address.",
-        "auth/weak-password": "Password must be at least 6 characters.",
-        "auth/user-not-found": "No account found with this email.",
-        "auth/wrong-password": "Incorrect password. Please try again.",
-        "auth/invalid-credential": "Incorrect email or password.",
+        "auth/invalid-email":        "Please enter a valid email address.",
+        "auth/weak-password":        "Password must be at least 6 characters.",
+        "auth/user-not-found":       "No account found with this email.",
+        "auth/wrong-password":       "Incorrect password. Please try again.",
+        "auth/invalid-credential":   "Incorrect email or password.",
       }
       setError(msg[err.code] ?? "Something went wrong. Please try again.")
     } finally {
@@ -132,8 +151,13 @@ const Auth = () => {
     setGoogleLoading(true)
     try {
       const cred = await signInWithPopup(auth, googleProvider)
-      const { uid, displayName, email } = cred.user
-      const username = await createUserDoc(uid, displayName ?? "User", email ?? "")
+      const { uid, displayName, email, photoURL } = cred.user
+      const username = await createUserDoc(
+        uid,
+        displayName ?? "User",
+        email ?? "",
+        photoURL ?? "",
+      )
       navigate(`/${username}/home`, { replace: true })
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") {
