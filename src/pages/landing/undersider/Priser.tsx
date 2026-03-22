@@ -21,7 +21,6 @@ const PRO_FEATURES = [
   "20 GB file storage",
   "Unlimited team members",
   "All advanced features",
-  "Nesting — boards in boards",
   "Priority support",
   "Export to PDF and JSON",
   "Early access to new features",

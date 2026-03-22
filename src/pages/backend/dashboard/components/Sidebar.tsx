@@ -165,7 +165,7 @@ const Sidebar = ({
         <NavButton active={activeTool === "calendar"} onClick={() => onToolChange("calendar")}
           icon={<Calendar size={15} className={activeTool === "calendar" ? "text-orange-400" : ""} />} label="Calendar" />
         <NavButton active={activeTool === "projekt"} onClick={() => onToolChange("projekt")}
-          icon={<CheckSquare size={15} className={activeTool === "projekt" ? "text-orange-400" : ""} />} label="Projekter" />
+          icon={<CheckSquare size={15} className={activeTool === "projekt" ? "text-orange-400" : ""} />} label="Projects" />
       </div>
 
       <div className="h-px bg-white/5 mx-4 my-4" />
