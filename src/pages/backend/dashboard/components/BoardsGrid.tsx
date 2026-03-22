@@ -8,13 +8,14 @@ interface BoardsGridProps {
   boards:    Board[]
   loading:   boolean
   username:  string
+  role?:     string
   onCreate:  (title: string, iconName: string, color: string) => void
   onRename:  (id: string, title: string) => void
   onDelete:  (id: string) => void
   onReorder: (reordered: Board[]) => void
 }
 
-const BoardsGrid = ({ boards, loading, username, onCreate, onRename, onDelete, onReorder }: BoardsGridProps) => {
+const BoardsGrid = ({ boards, loading, username, role, onCreate, onRename, onDelete, onReorder }: BoardsGridProps) => {
   const [showModal, setShowModal]   = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
@@ -119,6 +120,9 @@ const BoardsGrid = ({ boards, loading, username, onCreate, onRename, onDelete, o
         <NewBoardModal
           onClose={() => setShowModal(false)}
           onCreate={onCreate}
+          boardCount={boards.length}
+          username={username}
+          role={role}
         />
       )}
     </>

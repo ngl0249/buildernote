@@ -92,6 +92,7 @@ const Dashboard = () => {
               onRename={renameBoard}
               onDelete={deleteBoard}
               onReorder={reorderBoards}
+              role={profile?.role}
             />
           </div>
         )

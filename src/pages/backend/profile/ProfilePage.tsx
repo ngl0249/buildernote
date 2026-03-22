@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Camera, Check, Loader2, X } from "lucide-react"
+import { ArrowLeft, Camera, Check, Loader2, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { updateProfile, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
-import { doc, updateDoc, deleteDoc } from "firebase/firestore"
-import { db, } from "../../../lib/firebase/firebase"
+import { doc, updateDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "../../../lib/firebase/firebase"
 import { useAuth } from "../hooks/useAuth"
 import SubscriptionSettings from "./SubscriptionSettings"
 
@@ -34,6 +34,10 @@ const ProfilePage = () => {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
 
+  // Username availability
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deletePassword, setDeletePassword] = useState("")
   const [deleting, setDeleting] = useState(false)
@@ -53,6 +57,38 @@ const ProfilePage = () => {
 
   const initials = (displayName || "B")
     .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
+
+  const checkUsernameAvailability = useCallback(async (value: string) => {
+    const currentUsername = profile?.username ?? ""
+    if (!value || value === currentUsername) {
+      setUsernameStatus("idle")
+      return
+    }
+    if (value.length < 3) {
+      setUsernameStatus("idle")
+      return
+    }
+
+    setUsernameStatus("checking")
+    try {
+      const q = query(collection(db, "users"), where("username", "==", value))
+      const snap = await getDocs(q)
+      setUsernameStatus(snap.empty ? "available" : "taken")
+    } catch {
+      setUsernameStatus("idle")
+    }
+  }, [profile?.username])
+
+  const handleUsernameChange = (value: string) => {
+    const cleaned = value.replace(/[^a-z0-9_]/gi, "").toLowerCase()
+    setNewUsername(cleaned)
+    setUsernameStatus("idle")
+
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
+    usernameDebounceRef.current = setTimeout(() => {
+      checkUsernameAvailability(cleaned)
+    }, 500)
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -109,6 +145,9 @@ const ProfilePage = () => {
 
   const handleSave = async () => {
     if (!user) return
+    if (usernameStatus === "taken") { setError("That username is already taken."); return }
+    if (usernameStatus === "checking") { setError("Please wait while we check username availability."); return }
+
     setError("")
     setSaving(true)
     try {
@@ -130,6 +169,7 @@ const ProfilePage = () => {
       setUploadFile(null)
       setPreviewUrl(null)
       setSaved(true)
+      setUsernameStatus("idle")
       setTimeout(() => setSaved(false), 2500)
 
       if (cleanUsername !== handle) {
@@ -244,16 +284,40 @@ const ProfilePage = () => {
               <input
                 type="text"
                 value={newUsername}
-                onChange={e => setNewUsername(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase())}
+                onChange={e => handleUsernameChange(e.target.value)}
                 placeholder="yourhandle"
                 maxLength={20}
-                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:bg-white transition-colors"
+                className={`w-full pl-7 pr-8 py-2.5 rounded-xl border bg-gray-50 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:bg-white transition-colors ${
+                  usernameStatus === "taken"
+                    ? "border-red-300 focus:border-red-400"
+                    : usernameStatus === "available"
+                    ? "border-green-300 focus:border-green-400"
+                    : "border-gray-200 focus:border-orange-400"
+                }`}
               />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {usernameStatus === "checking" && (
+                  <Loader2 size={13} className="animate-spin text-gray-400" />
+                )}
+                {usernameStatus === "available" && (
+                  <CheckCircle2 size={13} className="text-green-500" />
+                )}
+                {usernameStatus === "taken" && (
+                  <AlertCircle size={13} className="text-red-500" />
+                )}
+              </div>
             </div>
-            <p className="text-[10px] text-gray-400 mt-1">
-              Your profile URL:{" "}
-              <span className="text-orange-500">buildernote.com/{newUsername || handle}</span>
-            </p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-[10px] text-gray-400">
+                buildernote.com/<span className="text-orange-500">{newUsername || handle}</span>
+              </p>
+              {usernameStatus === "available" && (
+                <p className="text-[10px] text-green-500 font-medium">Available</p>
+              )}
+              {usernameStatus === "taken" && (
+                <p className="text-[10px] text-red-500 font-medium">Already taken</p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -287,8 +351,8 @@ const ProfilePage = () => {
 
           <button
             onClick={handleSave}
-            disabled={saving || uploading}
-            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-xl transition-colors"
+            disabled={saving || uploading || usernameStatus === "taken" || usernameStatus === "checking"}
+            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-xl transition-colors"
           >
             {saving
               ? <Loader2 size={15} className="animate-spin" />
