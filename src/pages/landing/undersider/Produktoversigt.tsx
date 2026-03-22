@@ -10,7 +10,7 @@ const FEATURES = [
   { icon: "N", title: "Nesting", desc: "Boards inside boards. Build hierarchies and keep your projects organized.", color: "bg-amber-500" },
 ]
 
-const INTEGRATIONS = ["Firebase", "GitHub", "Google Drive", "Slack", "Figma", "Notion"]
+const INTEGRATIONS = ["Firebase", "GitHub", "Figma"]
 
 const Produktoversigt = () => (
   <div className="min-h-screen bg-white">

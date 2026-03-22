@@ -1,5 +1,7 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Navigate, useParams } from "react-router-dom"
+import { doc, onSnapshot } from "firebase/firestore"
+import { db } from "../../../lib/firebase/firebase"
 import { useAuth } from "../hooks/useAuth"
 import { useBoards } from "../hooks/useBoards"
 import { useOnlinePresence } from "../hooks/useOnlinePresence"
@@ -10,6 +12,9 @@ import BoardsGrid from "./components/BoardsGrid"
 import Todo from "./tabs/ToDo"
 import Calendar from "./tabs/Calender"
 import { AdminMembersTab, DeveloperTab, ModeratorTab, ProTab } from "./tabs/RolesTabs"
+import OwnerTab from "./tabs/Stafftabs/Ownertab"
+import MaintenancePage from "../../landing/undersider/MaintenancePage"
+import Projekt from "./tabs/Projekt"
 
 const Dashboard = () => {
   const { username } = useParams<{ username: string }>()
@@ -20,6 +25,8 @@ const Dashboard = () => {
     restoreBoard, deleteForever, reorderBoards,
   } = useBoards(user?.uid)
 
+  const [dashboardOnline, setDashboardOnline] = useState<boolean | null>(null)
+  const [siteOnline, setSiteOnline]   = useState<boolean | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTool, setActiveTool]   = useState<Tool>("boards")
   const [trashOpen, setTrashOpen]     = useState(false)
@@ -27,7 +34,15 @@ const Dashboard = () => {
 
   useOnlinePresence(user?.uid)
 
-  if (loading) {
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "config", "siteStatus"), snap => {
+      setSiteOnline(snap.exists() ? (snap.data().online ?? true) : true)
+      setDashboardOnline(snap.exists() ? (snap.data().dashboardOnline ?? true) : true)
+    })
+    return () => unsub()
+  }, [])
+
+  if (loading || siteOnline === null) {
     return (
       <div className="min-h-screen bg-[#1e2433] flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -44,8 +59,11 @@ const Dashboard = () => {
 
   const role = profile?.role ?? "Default"
 
+  if (!dashboardOnline && role !== "Owner") return <MaintenancePage />
+
   const handleToolChange = (tool: Tool) => {
     if (tool === "admin-members"  && role !== "Owner")      return
+    if (tool === "owner-control"  && role !== "Owner")      return
     if (tool === "developer"      && role !== "Developer")  return
     if (tool === "moderator"      && role !== "Moderator")  return
     if (tool === "pro"            && role !== "BuilderPro") return
@@ -56,8 +74,10 @@ const Dashboard = () => {
   const renderMain = () => {
     switch (activeTool) {
       case "todo":           return <Todo />
-      case "calendar": return <Calendar />
+      case "projekt": return <Projekt />
+      case "calendar":       return <Calendar />
       case "admin-members":  return role === "Owner"      ? <AdminMembersTab currentUserUid={user.uid} /> : null
+      case "owner-control":  return role === "Owner"      ? <OwnerTab />      : null
       case "developer":      return role === "Developer"  ? <DeveloperTab />  : null
       case "moderator":      return role === "Moderator"  ? <ModeratorTab />  : null
       case "pro":            return role === "BuilderPro" ? <ProTab />        : null
@@ -107,6 +127,7 @@ const Dashboard = () => {
         <Topbar
           profile={profile}
           username={handle}
+          boards={boards}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen(v => !v)}
           boardCount={boards.length}

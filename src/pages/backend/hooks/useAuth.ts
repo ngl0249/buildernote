@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { onAuthStateChanged, type User } from "firebase/auth"
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase/firebase"
 import { type UserProfile, type Role } from "../types/index"
 
@@ -24,17 +24,30 @@ export const useAuth = (): UseAuthReturn => {
         const ref  = doc(db, "users", firebaseUser.uid)
         const snap = await getDoc(ref)
 
-        if (snap.exists()) {
-          setProfile(snap.data() as UserProfile)
+      if (snap.exists()) {
+        const sessionKey = `logged_${firebaseUser.uid}`
+        const alreadyCounted = sessionStorage.getItem(sessionKey)
+        
+        if (!alreadyCounted) {
+          sessionStorage.setItem(sessionKey, "1")
+          await updateDoc(ref, {
+            lastLogin:  Date.now(),
+            loginCount: increment(1),
+          })
+        }
+        
+        setProfile({ ...snap.data() as UserProfile, lastLogin: Date.now() })
         } else {
           const newProfile: UserProfile = {
             uid:         firebaseUser.uid,
             displayName: firebaseUser.displayName ?? "Builder",
-            username:    firebaseUser.uid.slice(0, 8), 
+            username:    firebaseUser.uid.slice(0, 8),
             email:       firebaseUser.email ?? "",
             avatarUrl:   firebaseUser.photoURL ?? "",
-            role:        "Default",                     
+            role:        "Default",
             createdAt:   Date.now(),
+            lastLogin:   Date.now(),
+            loginCount:  1,
           }
           await setDoc(ref, { ...newProfile, createdAt: serverTimestamp() })
           setProfile(newProfile)

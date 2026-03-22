@@ -1,10 +1,12 @@
 import { useState } from "react"
-import { X, GripVertical, MessageSquare, Send } from "lucide-react"
+import { X, GripVertical, Send, MessageSquare } from "lucide-react"
 import { type BoardCard } from "../../../types/index"
+import { useAuth } from "../../../hooks/useAuth"
 
 interface Comment {
   id: string
   author: string
+  avatarUrl: string
   text: string
   ts: number
 }
@@ -14,18 +16,26 @@ interface Props {
   onUpdate: (data: Partial<BoardCard>) => void
   onDelete: () => void
   onMouseDown: (e: React.MouseEvent) => void
+  onSelect: () => void
+  onDeselect: () => void
 }
 
 const CommentCard = ({ card, onUpdate, onDelete, onMouseDown }: Props) => {
+  const { profile } = useAuth()
   const comments: Comment[] = (card as any).comments ?? []
-  const [draft, setDraft]   = useState("")
-  const [author, ] = useState("You")
+  const [draft, setDraft] = useState("")
 
   const addComment = () => {
     if (!draft.trim()) return
     const next = [
       ...comments,
-      { id: Date.now().toString(), author, text: draft.trim(), ts: Date.now() },
+      {
+        id: Date.now().toString(),
+        author: profile?.displayName ?? "You",
+        avatarUrl: profile?.avatarUrl ?? "",
+        text: draft.trim(),
+        ts: Date.now(),
+      },
     ]
     onUpdate({ comments: next } as any)
     setDraft("")
@@ -40,41 +50,48 @@ const CommentCard = ({ card, onUpdate, onDelete, onMouseDown }: Props) => {
 
   return (
     <div
-      className="absolute group bg-white rounded-2xl shadow-md overflow-hidden"
-      style={{ left: card.x, top: card.y, width: 240 }}
+      className="absolute group bg-[#252d3d] rounded-2xl shadow-lg overflow-hidden border border-white/10"
+      style={{ left: card.x, top: card.y, width: 260 }}
       onMouseDown={onMouseDown}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-yellow-50 border-b border-yellow-100">
-        <MessageSquare size={13} className="text-yellow-500 flex-shrink-0" />
-        <span className="text-xs font-semibold text-yellow-700">Comments</span>
-        <span className="ml-auto text-[10px] text-yellow-500 bg-yellow-100 rounded-full px-1.5 py-0.5">
-          {comments.length}
-        </span>
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/5">
+        <GripVertical size={12} className="text-gray-600 cursor-grab" />
+        <MessageSquare size={12} className="text-orange-400" />
+        <span className="text-xs font-semibold text-gray-300">Comments</span>
+        <span className="ml-auto text-[10px] text-gray-500 bg-white/5 rounded-full px-1.5 py-0.5">{comments.length}</span>
+        <button
+          onMouseDown={e => e.stopPropagation()}
+          onClick={onDelete}
+          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all"
+        >
+          <X size={12} />
+        </button>
       </div>
 
-      {/* Thread */}
-      <div className="px-3 py-2 flex flex-col gap-2 max-h-52 overflow-y-auto">
+      <div className="px-3 py-2 flex flex-col gap-3 max-h-56 overflow-y-auto">
         {comments.length === 0 && (
-          <p className="text-[11px] text-gray-400 italic text-center py-2">No comments yet</p>
+          <p className="text-[11px] text-gray-600 italic text-center py-3">No comments yet</p>
         )}
         {comments.map(c => (
-          <div key={c.id} className="group/item flex gap-2">
-            {/* Avatar */}
-            <div className="w-6 h-6 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-yellow-600">
-              {c.author[0]?.toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-[10px] font-semibold text-gray-600 truncate">{c.author}</span>
-                <span className="text-[9px] text-gray-300 flex-shrink-0">{fmt(c.ts)}</span>
+          <div key={c.id} className="flex gap-2 group/item">
+            {c.avatarUrl ? (
+              <img src={c.avatarUrl} className="w-6 h-6 rounded-full object-cover flex-shrink-0 mt-0.5" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-[9px] font-bold">{c.author[0]?.toUpperCase()}</span>
               </div>
-              <p className="text-[11px] text-gray-600 leading-snug break-words">{c.text}</p>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-1 mb-0.5">
+                <span className="text-[10px] font-semibold text-gray-300 truncate">{c.author}</span>
+                <span className="text-[9px] text-gray-600 flex-shrink-0">{fmt(c.ts)}</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-snug break-words">{c.text}</p>
             </div>
             <button
               onMouseDown={e => e.stopPropagation()}
               onClick={() => removeComment(c.id)}
-              className="text-gray-200 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0 self-start mt-0.5"
+              className="text-gray-600 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0 self-start mt-1"
             >
               <X size={9} />
             </button>
@@ -82,8 +99,14 @@ const CommentCard = ({ card, onUpdate, onDelete, onMouseDown }: Props) => {
         ))}
       </div>
 
-      {/* Input */}
-      <div className="border-t border-gray-100 px-3 py-2 flex gap-1.5 items-end">
+      <div className="border-t border-white/5 px-3 py-2 flex gap-2 items-end">
+        {profile?.avatarUrl ? (
+          <img src={profile.avatarUrl} className="w-5 h-5 rounded-full object-cover flex-shrink-0 mb-1" />
+        ) : (
+          <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0 mb-1">
+            <span className="text-white text-[8px] font-bold">{(profile?.displayName ?? "Y")[0]?.toUpperCase()}</span>
+          </div>
+        )}
         <textarea
           value={draft}
           onMouseDown={e => e.stopPropagation()}
@@ -91,29 +114,16 @@ const CommentCard = ({ card, onUpdate, onDelete, onMouseDown }: Props) => {
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addComment() } }}
           rows={2}
           placeholder="Add a comment…"
-          className="flex-1 text-xs text-gray-600 bg-gray-50 rounded-lg px-2 py-1.5 outline-none resize-none leading-snug placeholder:text-gray-400"
+          className="flex-1 text-xs text-gray-300 bg-white/5 rounded-lg px-2 py-1.5 outline-none resize-none leading-snug placeholder:text-gray-600 border border-white/5 focus:border-orange-500/30 transition-colors"
         />
         <button
           onMouseDown={e => e.stopPropagation()}
           onClick={addComment}
           disabled={!draft.trim()}
-          className="w-7 h-7 rounded-lg bg-yellow-400 hover:bg-yellow-500 disabled:opacity-40 flex items-center justify-center transition-colors flex-shrink-0"
+          className="w-7 h-7 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-30 flex items-center justify-center transition-colors flex-shrink-0"
         >
           <Send size={11} className="text-white" />
         </button>
-      </div>
-
-      {/* Delete */}
-      <button
-        onMouseDown={e => e.stopPropagation()}
-        onClick={onDelete}
-        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-yellow-100 hover:bg-red-100 hover:text-red-500 text-yellow-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <X size={10} />
-      </button>
-
-      <div className="absolute top-2.5 right-8 text-yellow-300 opacity-0 group-hover:opacity-100 cursor-grab">
-        <GripVertical size={12} />
       </div>
     </div>
   )

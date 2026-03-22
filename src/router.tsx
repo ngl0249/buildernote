@@ -19,6 +19,10 @@ import Kommende from "./pages/landing/undersider/Kommende"
 import Status from "./pages/landing/undersider/Status"
 import Team from "./pages/landing/undersider/Team"
 import ResetPassword from "./pages/landing/undersider/ResetPassword"
+import GuideRouter from "./pages/landing/undersider/Guides/Guiderouter"
+import SuccessPage from "./pages/landing/undersider/Successpage"
+import MaintenanceGuard from "./pages/landing/undersider/MaintenanceGuard"
+
 
 const DashboardRedirect = () => {
   const [user, loading] = useAuthState(auth)
@@ -37,6 +41,7 @@ const DashboardRedirect = () => {
   return <Navigate to={`/${handle}/home`} replace />
 }
 
+
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const [user, loading] = useAuthState(auth)
   if (loading) {
@@ -53,21 +58,24 @@ const router = createBrowserRouter([
   {
     path: "/",
     errorElement: <NotFound />,
+
     children: [
-      { index: true,       element: <Landing /> },        
-      { path: "login",     element: <Login /> },
-      { path: "register",  element: <Register /> },
+      { index: true,    element: <MaintenanceGuard><Landing /></MaintenanceGuard> },
+      { path: "login",  element: <MaintenanceGuard><Login /></MaintenanceGuard> },
+      { path: "register", element: <MaintenanceGuard><Register /></MaintenanceGuard> },
       { path: "/privacy", element: <Privacy /> },
       { path: "/terms", element: <Terms /> },
       { path: "guides",           element: <Guides /> },
+      { path: "guides/:slug",       element: <GuideRouter /> },
       { path: "productoverview",  element: <Produktoversigt /> },
       { path: "hjaelpecenter",    element: <Hjaelpecenter /> },
       { path: "prices",           element: <Priser /> },
-      { path: "upgrade",           element: <Priser /> },
       { path: "forthcoming",         element: <Kommende /> },
       { path: "status",           element: <Status />},
       { path: "reset",            element: <ResetPassword />},
       {path:  "team",             element: <Team />},
+      { path: "success", element: <PrivateRoute><SuccessPage /></PrivateRoute> },
+
       { path: "dashboard", element: <PrivateRoute><DashboardRedirect /></PrivateRoute> },
       {
         path: ":username",
@@ -76,6 +84,8 @@ const router = createBrowserRouter([
           { path: "home",             element: <PrivateRoute><Dashboard /></PrivateRoute> },
           { path: "profile",          element: <PrivateRoute><ProfilePage /></PrivateRoute> },
           { path: "board/:boardSlug", element: <PrivateRoute><BoardPage /></PrivateRoute> },
+
+          { path: "plans",           element: <Priser /> },
           { path: "*",                element: <NotFound /> },
 
         ],

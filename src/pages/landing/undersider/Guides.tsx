@@ -1,46 +1,50 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { Clock, ArrowRight } from "lucide-react"
 import Header from "../layout/Header"
 
-const GUIDES = [
+export const GUIDES = [
   {
     category: "Getting started",
+    slug: "getting-started",
     color: "bg-orange-500/10 text-orange-400 border-orange-500/20",
     dot: "bg-orange-500",
     items: [
-      { title: "Create your first board", desc: "Learn how to create and organize your first board from scratch.", tid: "5 min" },
-      { title: "Invite your team", desc: "Add team members and set up permissions in minutes.", tid: "3 min" },
-      { title: "Import from Notion or Trello", desc: "Move your existing projects to Buildernote easily.", tid: "8 min" },
+      { title: "Create your first board", slug: "create-first-board", desc: "Learn how to create and organize your first board from scratch.", tid: "5 min" },
+      { title: "Invite your team", slug: "invite-team", desc: "Add team members and set up permissions in minutes.", tid: "3 min" },
+      { title: "Understanding roles", slug: "understanding-roles", desc: "Learn what each role can do — Default, BuilderPro, Moderator, Developer and Owner.", tid: "4 min" },
     ],
   },
   {
     category: "Boards & cards",
+    slug: "boards-cards",
     color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     dot: "bg-blue-500",
     items: [
-      { title: "Using notes and links", desc: "Add rich notes, links and files directly on your board.", tid: "4 min" },
-      { title: "Drag & drop on canvas", desc: "Organize freely with our flexible canvas.", tid: "3 min" },
-      { title: "Nesting — boards in boards", desc: "Build hierarchies with boards inside boards.", tid: "6 min" },
+      { title: "Using notes and links", slug: "notes-and-links", desc: "Add rich notes, links and files directly on your board.", tid: "4 min" },
+      { title: "Drag & drop on canvas", slug: "drag-drop", desc: "Organize freely with our flexible canvas.", tid: "3 min" },
+      { title: "All card types explained", slug: "card-types", desc: "Notes, headings, to-dos, links, colors, documents, columns, comments and tables.", tid: "6 min" },
     ],
   },
   {
-    category: "Tasks & sprints",
+    category: "Tasks & calendar",
+    slug: "tasks-calendar",
     color: "bg-green-500/10 text-green-400 border-green-500/20",
     dot: "bg-green-500",
     items: [
-      { title: "Create and assign tasks", desc: "Create to-do lists, set deadlines and assign tasks to the team.", tid: "5 min" },
-      { title: "Sprint planning", desc: "Plan sprints and track progress in real time.", tid: "7 min" },
-      { title: "Status updates", desc: "Keep everyone updated with status tags and comments.", tid: "4 min" },
+      { title: "Using the to-do list", slug: "todo-list", desc: "Create tasks, check them off and stay on top of your work.", tid: "5 min" },
+      { title: "Using the calendar", slug: "calendar", desc: "Add events, navigate months and keep track of important dates.", tid: "4 min" },
     ],
   },
   {
-    category: "Advanced",
+    category: "Team collaboration",
+    slug: "team-collaboration",
     color: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     dot: "bg-purple-500",
     items: [
-      { title: "Firebase integration", desc: "Understand how Buildernote stores and syncs your data.", tid: "10 min" },
-      { title: "Export and backup", desc: "Export your boards and data to JSON or PDF.", tid: "5 min" },
-      { title: "Keyboard shortcuts", desc: "Get faster with our complete list of shortcuts.", tid: "3 min" },
+      { title: "Real-time presence", slug: "realtime-presence", desc: "See where your teammates are and what they're working on live.", tid: "3 min" },
+      { title: "Notifications", slug: "notifications", desc: "Stay informed when teammates make changes while you're away.", tid: "3 min" },
+      { title: "Team boards", slug: "team-boards", desc: "Share boards with your team and collaborate in real time.", tid: "5 min" },
     ],
   },
 ]
@@ -50,7 +54,10 @@ const Guides = () => {
 
   const filtered = GUIDES.map(g => ({
     ...g,
-    items: g.items.filter(i => i.title.toLowerCase().includes(search.toLowerCase()) || i.desc.toLowerCase().includes(search.toLowerCase())),
+    items: g.items.filter(i =>
+      i.title.toLowerCase().includes(search.toLowerCase()) ||
+      i.desc.toLowerCase().includes(search.toLowerCase())
+    ),
   })).filter(g => g.items.length > 0)
 
   return (
@@ -59,9 +66,17 @@ const Guides = () => {
       <div className="pt-20 pb-16 px-6 text-center">
         <span className="text-xs font-semibold tracking-widest text-orange-500 uppercase">Get started</span>
         <h1 className="text-4xl md:text-5xl font-bold text-white mt-3 mb-4 tracking-tight">Guides</h1>
-        <p className="text-gray-400 text-lg max-w-xl mx-auto mb-10">Step-by-step guides to get the most out of Buildernote — whether you're new or experienced.</p>
+        <p className="text-gray-400 text-lg max-w-xl mx-auto mb-10">
+          Step-by-step guides to get the most out of Buildernote — whether you're new or experienced.
+        </p>
         <div className="max-w-lg mx-auto">
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search guides..." className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors text-sm" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search guides..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500/50 transition-colors text-sm"
+          />
         </div>
       </div>
 
@@ -74,20 +89,36 @@ const Guides = () => {
             </div>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
               {group.items.map(item => (
-                <div key={item.title} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-orange-500/30 transition-all cursor-pointer group">
+                <Link
+                  key={item.slug}
+                  to={`/guides/${item.slug}`}
+                  className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-orange-500/30 transition-all group block"
+                >
                   <div className="flex items-start justify-between mb-3">
-                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${group.color}`}>{group.category}</span>
-                    <span className="text-[10px] text-gray-600">{item.tid}</span>
+                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${group.color}`}>
+                      {group.category}
+                    </span>
+                    <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                      <Clock size={9} />{item.tid}
+                    </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white mb-2 group-hover:text-orange-400 transition-colors">{item.title}</h3>
+                  <h3 className="text-sm font-semibold text-white mb-2 group-hover:text-orange-400 transition-colors">
+                    {item.title}
+                  </h3>
                   <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
-                  <div className="mt-4 flex items-center gap-1.5 text-xs text-orange-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity"><span>Read guide →</span></div>
-                </div>
+                  <div className="mt-4 flex items-center gap-1.5 text-xs text-orange-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Read guide</span><ArrowRight size={11} />
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
         ))}
-        {filtered.length === 0 && <div className="text-center py-20"><p className="text-gray-500 text-sm">No guides match your search.</p></div>}
+        {filtered.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-gray-500 text-sm">No guides match your search.</p>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-white/10 py-8 px-6">

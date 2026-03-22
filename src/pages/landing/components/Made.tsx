@@ -2,6 +2,7 @@ import { useRef, } from "react"
 
 import loreImg from "/landingimg/made/partners/lore.webp"
 import tradyImg from "/landingimg/made/partners/trady.webp"
+import Warn from "/landingimg/made/partners/warnmark.webp"
 
 const PROJECTS = [
   {
@@ -63,6 +64,7 @@ const PROJECTS = [
 const BRANDS = [
   { name: "Lore", img: loreImg },
   { name: "Trady", img: tradyImg },
+  { name: "Warn", img: Warn},
 ]
 
 const CardContent = ({ card, dark }: { card: any; dark: boolean }) => {

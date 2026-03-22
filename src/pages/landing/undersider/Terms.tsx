@@ -132,7 +132,7 @@ Upon termination, your right to use Buildernote ceases, but the provisions of th
     title: "12. Contact",
     content: `If you have questions about these terms of service, please contact us:
 
-Email: legal@buildernote.io
+Email: infobuildernote@gmail.com
 Buildernote`,
   },
 ]

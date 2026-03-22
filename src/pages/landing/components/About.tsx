@@ -59,7 +59,7 @@ const INITIAL_KANBAN: KanbanTask[] = [
 ]
 
 const COLS: { id: Column; label: string; borderIdle: string; borderActive: string; dot: string }[] = [
-  { id: "waiting", label: "Waiting", borderIdle: "border-white/10",       borderActive: "border-gray-400/50",    dot: "bg-gray-400" },
+  { id: "waiting", label: "To-do / Waiting", borderIdle: "border-white/10",       borderActive: "border-gray-400/50",    dot: "bg-gray-400" },
   { id: "doing",   label: "Doing",   borderIdle: "border-orange-500/30",  borderActive: "border-orange-400/70",  dot: "bg-orange-400" },
   { id: "done",    label: "Done",    borderIdle: "border-emerald-500/30", borderActive: "border-emerald-400/70", dot: "bg-emerald-400" },
 ]

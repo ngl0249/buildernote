@@ -1,38 +1,43 @@
 import { useState, useRef, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Camera, Check, Loader2, X } from "lucide-react"
-import { updateProfile } from "firebase/auth"
-import { doc, updateDoc } from "firebase/firestore"
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"
-import { db, storage } from "../../../lib/firebase/firebase"
+import { updateProfile, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
+import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { db, } from "../../../lib/firebase/firebase"
 import { useAuth } from "../hooks/useAuth"
+import SubscriptionSettings from "./SubscriptionSettings"
 
 const ROLE_STYLES: Record<string, { badge: string; desc: string }> = {
-  Owner:      { badge: "bg-orange-500/15 text-orange-500 border-orange-500/25",    desc: "Full access to everything" },
-  Developer:  { badge: "bg-sky-500/15 text-sky-500 border-sky-500/25",             desc: "Access to dev tools and settings" },
-  Moderator:  { badge: "bg-violet-500/15 text-violet-500 border-violet-500/25",    desc: "Can manage content and users" },
+  Owner: { badge: "bg-orange-500/15 text-orange-500 border-orange-500/25", desc: "Full access to everything" },
+  Developer: { badge: "bg-sky-500/15 text-sky-500 border-sky-500/25", desc: "Access to dev tools and settings" },
+  Moderator: { badge: "bg-violet-500/15 text-violet-500 border-violet-500/25", desc: "Can manage content and users" },
   BuilderPro: { badge: "bg-emerald-500/15 text-emerald-500 border-emerald-500/25", desc: "Pro features unlocked" },
-  Default:    { badge: "bg-gray-100 text-gray-500 border-gray-200",                desc: "Standard member" },
+  Default: { badge: "bg-gray-100 text-gray-500 border-gray-200", desc: "Standard member" },
 }
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"]
 const MAX_MB = 5
 
 const ProfilePage = () => {
-  const navigate          = useNavigate()
-  const { username }      = useParams<{ username: string }>()
+  const navigate = useNavigate()
+  const { username } = useParams<{ username: string }>()
   const { user, profile, loading } = useAuth()
-  const fileInputRef      = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [displayName, setDisplayName] = useState("")
   const [newUsername, setNewUsername] = useState("")
-  const [avatarUrl, setAvatarUrl]     = useState("")
-  const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
-  const [uploadFile, setUploadFile]   = useState<File | null>(null)
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
-  const [saving, setSaving]           = useState(false)
-  const [saved, setSaved]             = useState(false)
-  const [error, setError]             = useState("")
+  const [avatarUrl, setAvatarUrl] = useState("")
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState("")
+
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
 
   useEffect(() => {
     if (profile) {
@@ -42,9 +47,9 @@ const ProfilePage = () => {
     }
   }, [profile])
 
-  const role      = profile?.role ?? "Default"
+  const role = profile?.role ?? "Default"
   const roleStyle = ROLE_STYLES[role] ?? ROLE_STYLES.Default
-  const handle    = username ?? profile?.username ?? user?.uid ?? ""
+  const handle = username ?? profile?.username ?? user?.uid ?? ""
 
   const initials = (displayName || "B")
     .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
@@ -53,7 +58,7 @@ const ProfilePage = () => {
     const file = e.target.files?.[0]
     if (!file) return
     if (!ALLOWED_TYPES.includes(file.type)) { setError("Only PNG, JPG, GIF and WEBP files are allowed."); return }
-    if (file.size > MAX_MB * 1024 * 1024)  { setError(`File must be smaller than ${MAX_MB} MB.`); return }
+    if (file.size > MAX_MB * 1024 * 1024) { setError(`File must be smaller than ${MAX_MB} MB.`); return }
     setError("")
     setUploadFile(file)
     setPreviewUrl(URL.createObjectURL(file))
@@ -66,23 +71,40 @@ const ProfilePage = () => {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  const uploadAvatar = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!uploadFile || !user) { resolve(avatarUrl); return }
-      const ext        = uploadFile.name.split(".").pop()
-      const storageRef = ref(storage, `avatars/${user.uid}/avatar.${ext}`)
-      const task       = uploadBytesResumable(storageRef, uploadFile)
-      task.on(
-        "state_changed",
-        snap => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-        err  => reject(err),
-        async () => {
-          const url = await getDownloadURL(task.snapshot.ref)
-          setUploadProgress(null)
-          resolve(url)
-        }
-      )
-    })
+  const handleDeleteAccount = async () => {
+    if (!user || !deletePassword) return
+    setDeleting(true)
+    setDeleteError("")
+    try {
+      const credential = EmailAuthProvider.credential(user.email!, deletePassword)
+      await reauthenticateWithCredential(user, credential)
+      await deleteDoc(doc(db, "users", user.uid))
+      await deleteUser(user)
+      navigate("/")
+    } catch (e: any) {
+      setDeleteError("Wrong password. Please try again.")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const uploadAvatar = async (): Promise<string> => {
+    if (!uploadFile) return avatarUrl
+    setUploading(true)
+
+    const formData = new FormData()
+    formData.append("file", uploadFile)
+    formData.append("upload_preset", "buildernote")
+    formData.append("folder", "avatars")
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dy92adoue/image/upload",
+      { method: "POST", body: formData }
+    )
+    const data = await res.json()
+    setUploading(false)
+    if (data.error) throw new Error(data.error.message)
+    return data.secure_url
   }
 
   const handleSave = async () => {
@@ -90,18 +112,18 @@ const ProfilePage = () => {
     setError("")
     setSaving(true)
     try {
-      const finalAvatar   = uploadFile ? await uploadAvatar() : avatarUrl
+      const finalAvatar = uploadFile ? await uploadAvatar() : avatarUrl
       const cleanUsername = newUsername.replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 20)
 
       await updateProfile(user, {
         displayName: displayName.trim(),
-        photoURL:    finalAvatar,
+        photoURL: finalAvatar,
       })
 
       await updateDoc(doc(db, "users", user.uid), {
         displayName: displayName.trim(),
-        username:    cleanUsername,
-        avatarUrl:   finalAvatar,
+        username: cleanUsername,
+        avatarUrl: finalAvatar,
       })
 
       setAvatarUrl(finalAvatar)
@@ -186,22 +208,23 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {uploadProgress !== null && (
+        {uploading && (
           <div className="mb-5">
             <div className="flex justify-between text-xs text-gray-500 mb-1">
               <span>Uploading...</span>
-              <span>{uploadProgress}%</span>
+              <Loader2 size={12} className="animate-spin text-orange-500" />
             </div>
             <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-orange-500 rounded-full transition-all duration-200"
-                style={{ width: `${uploadProgress}%` }}
-              />
+              <div className="h-full bg-orange-500 rounded-full animate-pulse w-full" />
             </div>
           </div>
         )}
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+
+          {profile?.role === "BuilderPro" && (
+            <SubscriptionSettings />
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Display name</label>
@@ -264,16 +287,68 @@ const ProfilePage = () => {
 
           <button
             onClick={handleSave}
-            disabled={saving || uploadProgress !== null}
+            disabled={saving || uploading}
             className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-xl transition-colors"
           >
             {saving
               ? <Loader2 size={15} className="animate-spin" />
               : saved
-              ? <><Check size={15} /> Saved!</>
-              : "Save changes"
+                ? <><Check size={15} /> Saved!</>
+                : "Save changes"
             }
           </button>
+
+          {!deleteConfirm ? (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="w-full mt-4 py-2.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-500 hover:bg-red-50 border border-red-100 hover:border-red-200 transition-colors"
+            >
+              Delete account
+            </button>
+          ) : (
+            <div className="mt-4 bg-white rounded-2xl border border-red-100 shadow-sm p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <X size={14} className="text-red-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">Delete your account</p>
+                  <p className="text-xs text-gray-500">This will permanently delete your account and all your boards. This cannot be undone.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Confirm your password</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full px-3 py-2.5 rounded-xl border border-red-200 bg-red-50/50 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-colors"
+                />
+              </div>
+
+              {deleteError && (
+                <p className="text-xs text-red-500">{deleteError}</p>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setDeleteConfirm(false); setDeletePassword(""); setDeleteError("") }}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || !deletePassword}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {deleting ? <Loader2 size={12} className="animate-spin" /> : "Delete account"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

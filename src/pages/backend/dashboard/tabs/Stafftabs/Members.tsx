@@ -94,11 +94,12 @@ function RoleDropdown({ member, onRoleChange, disabled }: {
 }
 
 
-export default function Members({ currentUserUid }: { currentUserUid: string }) {
+  export default function Members({ currentUserUid, readOnly = false }: { currentUserUid: string; readOnly?: boolean }) {
   const [members, setMembers]     = useState<Member[]>([])
   const [loading, setLoading]     = useState(true)
   const [search, setSearch]       = useState("")
   const [filter, setFilter]       = useState<Role | "all">("all")
+  
 
   useEffect(() => {
     const fetch = async () => {

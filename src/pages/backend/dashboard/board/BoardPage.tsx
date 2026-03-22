@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { useParams, useNavigate, Navigate } from "react-router-dom"
 import {
   AlignLeft, Link2, CheckSquare, Heading,
-  Trash2, ArrowLeft, MoreHorizontal,
+  Trash2, ArrowLeft,
   Palette, FileText, Columns, MessageSquare, Table,
-  Users,
+  Users, Upload, Image as ImageIcon,
 } from "lucide-react"
 import type { RefObject } from "react"
 import { collection, query, where, getDocs, onSnapshot, doc, getDoc, setDoc, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore"
@@ -27,6 +27,8 @@ import DocumentCard from "./cards/Documentcard"
 import ColumnCard from "./cards/Columncard"
 import CommentCard from "./cards/Commentcard"
 import TableCard from "./cards/Tablecard"
+import UploadCard from "./cards/Upload"
+import ImageCard from "./cards/Image"
 
 interface PresenceUser {
   uid: string
@@ -44,34 +46,13 @@ const PRESENCE_COLORS = [
   "#ef4444", "#f59e0b", "#06b6d4", "#ec4899",
 ]
 
-const ToolBtn = ({
-  Icon, label, onClick, active = false, danger = false,
-}: {
-  Icon: React.ElementType
-  label: string
-  onClick: () => void
-  active?: boolean
-  danger?: boolean
-}) => (
-  <button
-    onClick={onClick}
-    title={label}
-    className={`flex flex-col items-center gap-0.5 w-full px-2 py-2 group transition-colors rounded-lg ${danger ? "hover:bg-red-500/10" : active ? "bg-white/10" : "hover:bg-white/5"}`}
-  >
-    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${danger ? "text-gray-500 group-hover:text-red-400" : active ? "text-white" : "text-gray-400 group-hover:bg-white/10 group-hover:text-white"}`}>
-      <Icon size={16} />
-    </div>
-    <span className={`text-[9px] transition-colors ${danger ? "text-gray-500 group-hover:text-red-400" : active ? "text-gray-300" : "text-gray-500 group-hover:text-gray-300"}`}>{label}</span>
-  </button>
-)
-
-const CANVAS_W = 4000
-const CANVAS_H = 3000
-
 const BoardPage = () => {
   const { username, boardSlug } = useParams<{ username: string; boardSlug: string }>()
   const navigate = useNavigate()
   const { user, profile, loading: authLoading } = useAuth()
+
+  const initials = (profile?.displayName ?? "B")
+    .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
 
   const [board, setBoard] = useState<Board | null>(null)
   const [boardId, setBoardId] = useState<string | null>(null)
@@ -184,46 +165,59 @@ const BoardPage = () => {
 
   const { members } = useTeam(ownerUid ?? undefined, boardId ?? undefined)
 
-const notifyTeam = useCallback(async (action: string, cardType: string) => {
-  if (!ownerUid || !boardId || !user?.uid || !board) return
-  const senderName = profile?.displayName ?? profile?.username ?? user.uid
+  const notifyTeam = useCallback(async (action: string, cardType: string) => {
+    if (!ownerUid || !boardId || !user?.uid || !board) return
+    const senderName = profile?.displayName ?? profile?.username ?? user.uid
 
-  const membersSnap = await getDocs(collection(db, "users", ownerUid, "boards", boardId, "members"))
-  const recipients = membersSnap.docs.map(d => d.id).filter(id => id !== user.uid)
-  if (ownerUid !== user.uid) recipients.push(ownerUid)
+    const membersSnap = await getDocs(collection(db, "users", ownerUid, "boards", boardId, "members"))
 
-  const presenceSnap = await getDocs(collection(db, "users", ownerUid, "boards", boardId, "presence"))
-  const now = Date.now()
-  const onBoardUids = new Set(
-    presenceSnap.docs
-      .map(d => d.data())
-      .filter(p => now - (p.updatedAt ?? 0) < 30_000)
-      .map(p => p.uid)
-  )
+    const recipients: string[] = []
+    if (user.uid === ownerUid) {
+      membersSnap.docs.forEach(d => { if (d.id !== user.uid) recipients.push(d.id) })
+    } else {
+      recipients.push(ownerUid)
+    }
 
-  const offlineRecipients = recipients.filter(uid => !onBoardUids.has(uid))
+    const presenceSnap = await getDocs(collection(db, "users", ownerUid, "boards", boardId, "presence"))
+    const now = Date.now()
+    const onBoardUids = new Set(
+      presenceSnap.docs
+        .map(d => d.data())
+        .filter(p => now - (p.updatedAt ?? 0) < 30_000)
+        .map(p => p.uid)
+    )
 
-  await Promise.all(offlineRecipients.map(recipientUid =>
-    addDoc(collection(db, "users", recipientUid, "notifications"), {
-      type:         "board_change",
-      title:        board.title,
-      body:         `${senderName} ${action} a ${cardType}`,
-      read:         false,
-      boardId,
-      boardOwnerId: ownerUid,
-      createdAt:    serverTimestamp(),
-    })
-  ))
-}, [ownerUid, boardId, user?.uid, board, profile?.displayName, profile?.username])
+    const offlineRecipients = recipients.filter(uid => !onBoardUids.has(uid))
+
+    await Promise.all(offlineRecipients.map(recipientUid =>
+      addDoc(collection(db, "users", recipientUid, "notifications"), {
+        type:         "board_change",
+        title:        board.title,
+        body:         `${senderName} ${action} a ${cardType}`,
+        read:         false,
+        boardId,
+        boardOwnerId: ownerUid,
+        createdAt:    serverTimestamp(),
+      })
+    ))
+  }, [ownerUid, boardId, user?.uid, board, profile?.displayName, profile?.username])
+
+  const getCanvasBounds = useCallback(() => {
+    if (cards.length === 0) return { w: 0, h: 0 }
+    const maxX = Math.max(...cards.map(c => c.x + (c.width ?? 280)))
+    const maxY = Math.max(...cards.map(c => c.y + (c.height ?? 160)))
+    return { w: maxX + 200, h: maxY + 200 }
+  }, [cards])
 
   const clampPan = useCallback((x: number, y: number) => {
     const vp = viewportRef.current
     if (!vp) return { x, y }
+    const { w, h } = getCanvasBounds()
     return {
-      x: Math.min(0, Math.max(-(CANVAS_W - vp.clientWidth), x)),
-      y: Math.min(0, Math.max(-(CANVAS_H - vp.clientHeight), y)),
+      x: Math.min(0, Math.max(w > vp.clientWidth  ? -(w - vp.clientWidth)  : 0, x)),
+      y: Math.min(0, Math.max(h > vp.clientHeight ? -(h - vp.clientHeight) : 0, y)),
     }
-  }, [])
+  }, [getCanvasBounds])
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
@@ -314,30 +308,81 @@ const notifyTeam = useCallback(async (action: string, cardType: string) => {
 
   return (
     <div className="flex h-screen bg-[#1e2433] overflow-hidden">
-      <aside className="w-[60px] bg-[#161b27] border-r border-white/5 flex flex-col items-center py-3 flex-shrink-0 overflow-y-auto">
-        <ToolBtn Icon={ArrowLeft} label="Back" onClick={() => navigate(`/${handle}/home`)} />
-        <div className="h-px bg-white/5 w-8 my-2" />
-        <ToolBtn Icon={AlignLeft} label="Note" onClick={() => handleAddCard("note")} />
-        <ToolBtn Icon={Heading} label="Heading" onClick={() => handleAddCard("heading")} />
-        <ToolBtn Icon={CheckSquare} label="To-do" onClick={() => handleAddCard("todo")} />
-        <ToolBtn Icon={Link2} label="Link" onClick={() => handleAddCard("link")} />
-        <div className="h-px bg-white/5 w-8 my-2" />
-        <ToolBtn Icon={Palette} label="Color" onClick={() => handleAddCard("color")} />
-        <ToolBtn Icon={FileText} label="Document" onClick={() => handleAddCard("document")} />
-        <ToolBtn Icon={Columns} label="Column" onClick={() => handleAddCard("column")} />
-        <ToolBtn Icon={MessageSquare} label="Comment" onClick={() => handleAddCard("comment")} />
-        <ToolBtn Icon={Table} label="Table" onClick={() => handleAddCard("table")} />
+      <aside className="w-[72px] bg-[#161b27] border-r border-white/5 flex flex-col items-center py-4 flex-shrink-0">
+
+        <button
+          onClick={() => navigate(`/${handle}/home`)}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/5 hover:text-white transition-colors mb-4"
+          title="Back"
+        >
+          <ArrowLeft size={18} />
+        </button>
+
+        <div className="h-px bg-white/5 w-10 mb-4" />
+
+        <p className="text-[9px] text-gray-600 uppercase tracking-widest mb-2 font-semibold">Add</p>
+
+        <div className="flex flex-col items-center gap-1 w-full px-2">
+          {[
+            { Icon: AlignLeft,   label: "Note",    type: "note"     },
+            { Icon: Heading,     label: "Heading", type: "heading"  },
+            { Icon: CheckSquare, label: "To-do",   type: "todo"     },
+            { Icon: Link2,       label: "Link",    type: "link"     },
+            { Icon: FileText,    label: "Doc",     type: "document" },
+            { Icon: Columns,     label: "Column",  type: "column"   },
+            { Icon: Table,       label: "Table",   type: "table"    },
+          ].map(({ Icon, label, type }) => (
+            <button
+              key={type}
+              onClick={() => handleAddCard(type as CardType)}
+              title={label}
+              className="w-full flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-gray-500 hover:bg-white/5 hover:text-white transition-colors group"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:bg-white/5 transition-colors">
+                <Icon size={16} />
+              </div>
+              <span className="text-[9px] leading-none">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="h-px bg-white/5 w-10 my-3" />
+
+        <p className="text-[9px] text-gray-600 uppercase tracking-widest mb-2 font-semibold">More</p>
+        <div className="flex flex-col items-center gap-1 w-full px-2">
+          {[
+            { Icon: Palette,       label: "Color",   type: "color"   },
+            { Icon: MessageSquare, label: "Comment", type: "comment" },
+            { Icon: Upload,        label: "Upload",  type: "upload"  },
+            { Icon: ImageIcon,     label: "Image",   type: "image"   },
+          ].map(({ Icon, label, type }) => (
+            <button
+              key={type}
+              onClick={() => handleAddCard(type as CardType)}
+              title={label}
+              className="w-full flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-gray-500 hover:bg-white/5 hover:text-white transition-colors group"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:bg-white/5 transition-colors">
+                <Icon size={16} />
+              </div>
+              <span className="text-[9px] leading-none">{label}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1" />
+        <div className="h-px bg-white/5 w-10 mb-3" />
+
         <button
           ref={trashButtonRef as RefObject<HTMLButtonElement>}
           onClick={() => setTrashOpen(v => !v)}
           title="Trash"
-          className={`flex flex-col items-center gap-0.5 w-full px-2 py-2 group transition-colors rounded-lg hover:bg-red-500/10 ${trashOpen ? "bg-red-500/10" : ""}`}
+          className={`w-full flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-colors group ${trashOpen ? "text-red-400" : "text-gray-500 hover:text-red-400"}`}
         >
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors group-hover:text-red-400 ${trashOpen ? "text-red-400" : "text-gray-500"}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${trashOpen ? "bg-red-500/10" : "group-hover:bg-red-500/10"}`}>
             <Trash2 size={16} />
           </div>
-          <span className={`text-[9px] transition-colors group-hover:text-red-400 ${trashOpen ? "text-red-400" : "text-gray-500"}`}>Trash</span>
+          <span className="text-[9px] leading-none">Trash</span>
         </button>
       </aside>
 
@@ -394,8 +439,17 @@ const notifyTeam = useCallback(async (action: string, cardType: string) => {
                 </span>
               )}
             </button>
-            <button className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-500 hover:text-white transition-colors">
-              <MoreHorizontal size={16} />
+            <button className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
+              {profile?.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="avatar" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-[9px] font-bold">{initials}</span>
+                </div>
+              )}
+              <span className="text-sm text-gray-300 font-medium hidden md:block max-w-[90px] truncate">
+                {profile?.displayName ?? "Builder"}
+              </span>
             </button>
           </div>
         </header>
@@ -431,7 +485,13 @@ const notifyTeam = useCallback(async (action: string, cardType: string) => {
             </div>
           ) : null}
 
-          <div style={{ position: "absolute", top: 0, left: 0, width: CANVAS_W, height: CANVAS_H, transform: `translate(${pan.x}px, ${pan.y}px)`, willChange: "transform" }}>
+          <div style={{
+            position: "absolute", top: 0, left: 0,
+            width: Math.max(getCanvasBounds().w, viewportRef.current?.clientWidth ?? 0),
+            height: Math.max(getCanvasBounds().h, viewportRef.current?.clientHeight ?? 0),
+            transform: `translate(${pan.x}px, ${pan.y}px)`,
+            willChange: "transform",
+          }}>
             {cards.map(card => {
               const sharedProps = {
                 card,
@@ -450,6 +510,8 @@ const notifyTeam = useCallback(async (action: string, cardType: string) => {
               if (card.type === "column")   return <ColumnCard   key={card.id} {...sharedProps} />
               if (card.type === "comment")  return <CommentCard  key={card.id} {...sharedProps} />
               if (card.type === "table")    return <TableCard    key={card.id} {...sharedProps} />
+              if (card.type === "upload")   return <UploadCard   key={card.id} {...sharedProps} />
+              if (card.type === "image")    return <ImageCard    key={card.id} {...sharedProps} />
               return null
             })}
 

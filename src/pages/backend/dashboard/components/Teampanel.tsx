@@ -1,17 +1,19 @@
 import { useState, useRef, useEffect } from "react"
 import {
   X, Users, UserPlus, Crown, Pencil, Eye,
-  Trash2, ChevronDown, Check, Loader2,
+  Trash2, ChevronDown, Check, Loader2, Sparkles, Infinity,
 } from "lucide-react"
 import { type BoardMember, type MemberRole, useTeam, fetchUserProfile } from "../../hooks/Useteam"
+import { useAuth } from "../../hooks/useAuth"
 
+const INVITE_LIMIT = 5
+const UNLIMITED_ROLES = ["Owner", "Developer", "Moderator", "BuilderPro"]
 
 const ROLE_META: Record<MemberRole, { label: string; icon: React.ElementType; color: string }> = {
   owner:  { label: "Owner",  icon: Crown,  color: "text-orange-400" },
   editor: { label: "Editor", icon: Pencil, color: "text-sky-400"    },
   viewer: { label: "Viewer", icon: Eye,    color: "text-gray-400"   },
 }
-
 
 const Avatar = ({ member }: { member: BoardMember }) => {
   const initials = (member.displayName ?? member.username ?? "?")
@@ -29,7 +31,6 @@ const Avatar = ({ member }: { member: BoardMember }) => {
     </div>
   )
 }
-
 
 const RolePicker = ({
   current, onChange, disabled,
@@ -80,7 +81,6 @@ const RolePicker = ({
   )
 }
 
-
 const MemberRow = ({
   member, isOwner, onRemove, onRoleChange,
 }: {
@@ -123,7 +123,6 @@ const MemberRow = ({
   )
 }
 
-
 interface TeamPanelProps {
   open:        boolean
   onClose:     () => void
@@ -142,6 +141,10 @@ const TeamPanel = ({
 }: TeamPanelProps) => {
   const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const { profile } = useAuth()
+  const inviterRole = profile?.role ?? "Default"
+  const isUnlimited = UNLIMITED_ROLES.includes(inviterRole)
 
   const { members, loading, inviteByUsername, removeMember, changeRole } =
     useTeam(ownerUid, boardId)
@@ -173,6 +176,9 @@ const TeamPanel = ({
 
   const isOwner = currentUid === ownerUid
 
+  const memberCount = members.filter(m => m.uid !== ownerUid).length
+  const atLimit     = !isUnlimited && memberCount >= INVITE_LIMIT
+
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
@@ -197,10 +203,10 @@ const TeamPanel = ({
   }, [feedback])
 
   const handleInvite = async () => {
-    if (!inviteInput.trim()) return
+    if (!inviteInput.trim() || atLimit) return
     setInviting(true)
     const res = await inviteByUsername(
-      inviterName, boardTitle, boardColor, inviteInput.trim(),
+      inviterName, boardTitle, boardColor, inviteInput.trim(), "editor", inviterRole,
     )
     setInviting(false)
     setFeedback({
@@ -210,6 +216,10 @@ const TeamPanel = ({
         : res.error ?? "Ukendt fejl",
     })
     if (res.ok) setInviteInput("")
+  }
+
+  const handleRemove = async (uid: string) => {
+    await removeMember(uid)
   }
 
   if (!open) return null
@@ -259,12 +269,54 @@ const TeamPanel = ({
         </div>
 
         {isOwner && (
-          <div className="px-4 py-3 border-b border-white/5 flex-shrink-0">
-            <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-2">
-              Invitér via brugernavn
-            </p>
+          <div className="px-4 py-3 border-b border-white/5 flex-shrink-0 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider">
+                Invitér via brugernavn
+              </p>
+
+              {isUnlimited ? (
+                <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+                  <Sparkles size={10} />
+                  <span>Ubegrænset</span>
+                  <Infinity size={10} />
+                </div>
+              ) : (
+                <div className={`flex items-center gap-1 text-[10px] font-semibold ${atLimit ? "text-red-400" : "text-gray-500"}`}>
+                  <span className={`px-1.5 py-0.5 rounded-md border text-[9px] font-bold ${
+                    atLimit
+                      ? "bg-red-500/10 border-red-500/30 text-red-400"
+                      : memberCount >= INVITE_LIMIT - 1
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                      : "bg-white/5 border-white/10 text-gray-500"
+                  }`}>
+                    {memberCount}/{INVITE_LIMIT}
+                  </span>
+                  <span className="text-gray-600">slots</span>
+                </div>
+              )}
+            </div>
+
+            {atLimit && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-500/8 border border-red-500/20">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-red-400 font-medium leading-snug">
+                    Du har nået grænsen på {INVITE_LIMIT} medlemmer.
+                  </p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 leading-snug">
+                    Fjern et medlem for at frigøre en plads, eller opgradér til{" "}
+                    <span className="text-emerald-400 font-semibold">BuilderPro</span> for ubegrænset adgang.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-orange-500/50 transition-colors">
+              <div className={`flex-1 flex items-center gap-2 bg-white/5 border rounded-xl px-3 py-2 transition-colors ${
+                atLimit
+                  ? "border-white/5 opacity-50"
+                  : "border-white/10 focus-within:border-orange-500/50"
+              }`}>
                 <span className="text-gray-600 text-sm font-mono select-none">@</span>
                 <input
                   ref={inputRef}
@@ -272,12 +324,13 @@ const TeamPanel = ({
                   onChange={e => setInviteInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") handleInvite() }}
                   placeholder="brugernavn"
-                  className="flex-1 bg-transparent text-sm text-gray-300 placeholder-gray-600 outline-none"
+                  disabled={atLimit}
+                  className="flex-1 bg-transparent text-sm text-gray-300 placeholder-gray-600 outline-none disabled:cursor-not-allowed"
                 />
               </div>
               <button
                 onClick={handleInvite}
-                disabled={inviting || !inviteInput.trim()}
+                disabled={inviting || !inviteInput.trim() || atLimit}
                 className="w-9 h-9 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all active:scale-95 flex-shrink-0"
                 title="Send invitation"
               >
@@ -289,7 +342,7 @@ const TeamPanel = ({
             </div>
 
             {feedback && (
-              <p className={`text-[11px] mt-2 font-medium ${feedback.ok ? "text-emerald-400" : "text-red-400"}`}>
+              <p className={`text-[11px] font-medium ${feedback.ok ? "text-emerald-400" : "text-red-400"}`}>
                 {feedback.msg}
               </p>
             )}
@@ -313,7 +366,7 @@ const TeamPanel = ({
                   key={m.uid}
                   member={m}
                   isOwner={isOwner}
-                  onRemove={removeMember}
+                  onRemove={handleRemove}
                   onRoleChange={changeRole}
                 />
               ))}

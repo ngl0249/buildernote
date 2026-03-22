@@ -4,8 +4,7 @@ import {
   LayoutGrid, CheckSquare, Settings, LogOut,
   ChevronRight, Trash2, Shield, Code2,
   MessageSquareWarning, Sparkles, Users,
-  Calendar,
-  Pencil, Eye, ExternalLink,
+  Calendar, Pencil, Eye, ExternalLink, Power,
 } from "lucide-react"
 import { type RefObject } from "react"
 import { auth } from "../../../../lib/firebase/firebase"
@@ -17,7 +16,7 @@ import logo from "/landingimg/navbar/navlogo.webp"
 type Role = "Owner" | "Developer" | "Moderator" | "BuilderPro" | "Default"
 type Tool =
   | "boards" | "todo" | "calendar" | "admin-members" | "developer"
-  | "moderator" | "pro" | "activity" | "billing" | "team"
+  | "moderator" | "pro" | "activity" | "billing" | "team" | "owner-control" | "projekt"
 
 interface SidebarProps {
   open: boolean
@@ -34,21 +33,26 @@ interface SidebarProps {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  Owner: "bg-orange-500/20 text-orange-400",
-  Developer: "bg-sky-500/20 text-sky-400",
-  Moderator: "bg-violet-500/20 text-violet-400",
+  Owner:      "bg-orange-500/20 text-orange-400",
+  Developer:  "bg-sky-500/20 text-sky-400",
+  Moderator:  "bg-violet-500/20 text-violet-400",
   BuilderPro: "bg-emerald-500/20 text-emerald-400",
-  Default: "bg-white/10 text-gray-500",
+  Default:    "bg-white/10 text-gray-500",
 }
 
 const ROLE_TAB: Partial<Record<Role, {
   label: string; accent: string
   tools: { tool: Tool; label: string; icon: React.ReactNode }[]
 }>> = {
-  Owner:      { label: "Admin",     accent: "text-orange-400", tools: [{ tool: "admin-members", label: "Members",   icon: <Users size={14} /> }] },
-  Developer:  { label: "Developer", accent: "text-sky-400",    tools: [{ tool: "developer",     label: "Developer", icon: <Code2 size={14} /> }] },
-  Moderator:  { label: "Moderator", accent: "text-violet-400", tools: [{ tool: "moderator",     label: "Moderator", icon: <MessageSquareWarning size={14} /> }] },
-  BuilderPro: { label: "Pro",       accent: "text-emerald-400",tools: [{ tool: "pro",            label: "Pro Features", icon: <Sparkles size={14} /> }] },
+  Owner: {
+    label: "Admin", accent: "text-orange-400", tools: [
+      { tool: "admin-members", label: "Members",      icon: <Users size={14} /> },
+      { tool: "owner-control", label: "Site Control", icon: <Power size={14} /> },
+    ]
+  },
+  Developer:  { label: "Developer", accent: "text-sky-400",     tools: [{ tool: "developer", label: "Developer",    icon: <Code2 size={14} /> }] },
+  Moderator:  { label: "Moderator", accent: "text-violet-400",  tools: [{ tool: "moderator", label: "Moderator",    icon: <MessageSquareWarning size={14} /> }] },
+  BuilderPro: { label: "Builderpro", accent: "text-emerald-400", tools: [{ tool: "pro",      label: "Pro Features", icon: <Sparkles size={14} /> }] },
 }
 
 function NavButton({ active, onClick, icon, label, activeClass = "bg-white/10 text-white" }: {
@@ -160,6 +164,8 @@ const Sidebar = ({
           icon={<CheckSquare size={15} className={activeTool === "todo" ? "text-orange-400" : ""} />} label="To-do" />
         <NavButton active={activeTool === "calendar"} onClick={() => onToolChange("calendar")}
           icon={<Calendar size={15} className={activeTool === "calendar" ? "text-orange-400" : ""} />} label="Calendar" />
+        <NavButton active={activeTool === "projekt"} onClick={() => onToolChange("projekt")}
+          icon={<CheckSquare size={15} className={activeTool === "projekt" ? "text-orange-400" : ""} />} label="Projekter" />
       </div>
 
       <div className="h-px bg-white/5 mx-4 my-4" />

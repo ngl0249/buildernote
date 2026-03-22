@@ -90,7 +90,7 @@ const Kommende = () => (
     <div className="py-20 px-6 text-center">
       <h2 className="text-3xl font-bold text-white mb-4">Have an idea?</h2>
       <p className="text-gray-400 mb-8 max-w-md mx-auto">We love feedback from our users. Send us your idea and we'll include it in our planning.</p>
-      <a href="mailto:feedback@buildernote.io" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-xl transition-colors inline-block">Send your idea →</a>
+      <a href="mailto:infobuildernote@gmail.com" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-xl transition-colors inline-block">Send your idea →</a>
     </div>
 
     <div className="border-t border-white/10 py-8 px-6">

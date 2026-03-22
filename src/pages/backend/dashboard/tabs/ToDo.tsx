@@ -11,7 +11,6 @@ import {
   X, Calendar, ChevronRight, Grip,
 } from "lucide-react"
 
-
 type Priority = "low" | "medium" | "high"
 type Status   = "todo" | "waiting" | "processing" | "done"
 type View     = "boards" | "board-detail"
@@ -31,41 +30,25 @@ type TodoItem = {
   status: Status
   priority: Priority
   dueDate: string | null
+  category: string | null
   createdAt: any
 }
-
 
 const STATUSES: {
   key: Status; label: string
   color: string; bg: string; border: string; headerBg: string
   icon: React.ReactNode
 }[] = [
-  {
-    key: "todo",       label: "To Do",
-    color: "text-stone-500",   bg: "bg-stone-100",    border: "border-stone-200",  headerBg: "bg-stone-50",
-    icon: <Circle size={11} />,
-  },
-  {
-    key: "waiting",    label: "Waiting",
-    color: "text-amber-600",   bg: "bg-amber-50",     border: "border-amber-200",  headerBg: "bg-amber-50/60",
-    icon: <Clock size={11} />,
-  },
-  {
-    key: "processing", label: "Processing",
-    color: "text-orange-500",  bg: "bg-orange-50",    border: "border-orange-200", headerBg: "bg-orange-50/60",
-    icon: <AlertCircle size={11} />,
-  },
-  {
-    key: "done",       label: "Done",
-    color: "text-emerald-600", bg: "bg-emerald-50",   border: "border-emerald-200", headerBg: "bg-emerald-50/60",
-    icon: <CheckCircle2 size={11} />,
-  },
+  { key: "todo",       label: "To Do",      color: "text-stone-500",   bg: "bg-stone-100",    border: "border-stone-200",   headerBg: "bg-stone-50",      icon: <Circle size={11} /> },
+  { key: "waiting",    label: "Waiting",    color: "text-amber-600",   bg: "bg-amber-50",     border: "border-amber-200",   headerBg: "bg-amber-50/60",   icon: <Clock size={11} /> },
+  { key: "processing", label: "Processing", color: "text-orange-500",  bg: "bg-orange-50",    border: "border-orange-200",  headerBg: "bg-orange-50/60",  icon: <AlertCircle size={11} /> },
+  { key: "done",       label: "Done",       color: "text-emerald-600", bg: "bg-emerald-50",   border: "border-emerald-200", headerBg: "bg-emerald-50/60", icon: <CheckCircle2 size={11} /> },
 ]
 
 const PRIORITIES: { key: Priority; label: string; color: string; dot: string }[] = [
-  { key: "low",    label: "Low",    color: "text-stone-400", dot: "bg-stone-300"  },
-  { key: "medium", label: "Medium", color: "text-amber-500", dot: "bg-amber-400"  },
-  { key: "high",   label: "High",   color: "text-red-500",   dot: "bg-red-400"    },
+  { key: "low",    label: "Low",    color: "text-stone-400", dot: "bg-stone-300" },
+  { key: "medium", label: "Medium", color: "text-amber-500", dot: "bg-amber-400" },
+  { key: "high",   label: "High",   color: "text-red-500",   dot: "bg-red-400"   },
 ]
 
 const BOARD_COLORS = [
@@ -73,6 +56,15 @@ const BOARD_COLORS = [
   "#8b5cf6", "#06b6d4", "#f97316", "#ef4444",
 ]
 
+const CATEGORIES = [
+  { label: "All",      color: "bg-stone-100 text-stone-500 border-stone-200" },
+  { label: "Design",   color: "bg-purple-50 text-purple-500 border-purple-200" },
+  { label: "Dev",      color: "bg-sky-50 text-sky-500 border-sky-200" },
+  { label: "Product",  color: "bg-orange-50 text-orange-500 border-orange-200" },
+  { label: "Growth",   color: "bg-emerald-50 text-emerald-500 border-emerald-200" },
+  { label: "Research", color: "bg-yellow-50 text-yellow-500 border-yellow-200" },
+  { label: "Ops",      color: "bg-red-50 text-red-500 border-red-200" },
+]
 
 const statusOf   = (s: Status)   => STATUSES.find(x => x.key === s)   ?? STATUSES[0]
 const priorityOf = (p: Priority) => PRIORITIES.find(x => x.key === p) ?? PRIORITIES[1]
@@ -81,44 +73,29 @@ function formatDate(d: string | null) {
   if (!d) return null
   return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
 }
+
 function isOverdue(d: string | null) {
   if (!d) return false
   return new Date(d) < new Date()
 }
 
-
-const boardsRef = (uid: string) =>
-  collection(db, "users", uid, "todoBoards")
-
-const todosRef = (uid: string, boardId: string) =>
-  collection(db, "users", uid, "todoBoards", boardId, "todos")
-
-const todoDocRef = (uid: string, boardId: string, todoId: string) =>
-  doc(db, "users", uid, "todoBoards", boardId, "todos", todoId)
-
+const boardsRef = (uid: string) => collection(db, "users", uid, "todoBoards")
+const todosRef  = (uid: string, boardId: string) => collection(db, "users", uid, "todoBoards", boardId, "todos")
+const todoDocRef = (uid: string, boardId: string, todoId: string) => doc(db, "users", uid, "todoBoards", boardId, "todos", todoId)
 
 function BoardCard({ board, todos, onClick, onDelete }: {
-  board: Board
-  todos: TodoItem[]
-  onClick: () => void
-  onDelete: (e: React.MouseEvent) => void
+  board: Board; todos: TodoItem[]
+  onClick: () => void; onDelete: (e: React.MouseEvent) => void
 }) {
   const total   = todos.length
   const done    = todos.filter(t => t.status === "done").length
   const pct     = total ? Math.round((done / total) * 100) : 0
   const preview = todos.slice(0, 4)
-
-  const counts = Object.fromEntries(
-    STATUSES.map(s => [s.key, todos.filter(t => t.status === s.key).length])
-  ) as Record<Status, number>
+  const counts  = Object.fromEntries(STATUSES.map(s => [s.key, todos.filter(t => t.status === s.key).length])) as Record<Status, number>
 
   return (
-    <div
-      onClick={onClick}
-      className="group relative rounded-xl border border-stone-200 bg-white hover:border-stone-300 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
-    >
+    <div onClick={onClick} className="group relative rounded-xl border border-stone-200 bg-white hover:border-stone-300 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden">
       <div className="h-[3px] w-full" style={{ backgroundColor: board.color }} />
-
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
@@ -129,18 +106,12 @@ function BoardCard({ board, todos, onClick, onDelete }: {
             <p className="text-[11px] text-stone-400 pl-4">{total} task{total !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={onDelete}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all"
-            >
+            <button onClick={onDelete} className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all">
               <Trash2 size={12} />
             </button>
-            <div className="p-1.5 text-stone-300">
-              <ChevronRight size={12} />
-            </div>
+            <div className="p-1.5 text-stone-300"><ChevronRight size={12} /></div>
           </div>
         </div>
-
         {total > 0 && (
           <div className="mb-3">
             <div className="flex justify-between items-center mb-1">
@@ -148,14 +119,10 @@ function BoardCard({ board, todos, onClick, onDelete }: {
               <span className="text-[10px] text-stone-500 font-medium">{pct}%</span>
             </div>
             <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${pct}%`, backgroundColor: board.color }}
-              />
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: board.color }} />
             </div>
           </div>
         )}
-
         {preview.length > 0 ? (
           <div className="space-y-1.5">
             {preview.map(t => {
@@ -163,9 +130,7 @@ function BoardCard({ board, todos, onClick, onDelete }: {
               return (
                 <div key={t.id} className="flex items-center gap-2">
                   <span className={`${st.color} shrink-0`}>{st.icon}</span>
-                  <span className={`text-[11px] truncate ${t.status === "done" ? "line-through text-stone-300" : "text-stone-500"}`}>
-                    {t.title}
-                  </span>
+                  <span className={`text-[11px] truncate ${t.status === "done" ? "line-through text-stone-300" : "text-stone-500"}`}>{t.title}</span>
                 </div>
               )
             })}
@@ -174,7 +139,6 @@ function BoardCard({ board, todos, onClick, onDelete }: {
         ) : (
           <p className="text-[11px] text-stone-300 italic">No tasks yet</p>
         )}
-
         <div className="flex gap-1.5 mt-3 flex-wrap">
           {STATUSES.map(s => counts[s.key] > 0 && (
             <div key={s.key} className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${s.bg} border ${s.border}`}>
@@ -188,15 +152,12 @@ function BoardCard({ board, todos, onClick, onDelete }: {
   )
 }
 
-
 function KanbanColumn({
   col, todos, boardColor,
   onAddTodo, onUpdateTodo, onDeleteTodo,
   onDragStart, onDragOver, onDrop,
 }: {
-  col: typeof STATUSES[number]
-  todos: TodoItem[]
-  boardColor: string
+  col: typeof STATUSES[number]; todos: TodoItem[]; boardColor: string
   onAddTodo: (status: Status, title: string, desc: string, priority: Priority, due: string) => Promise<void>
   onUpdateTodo: (id: string, patch: Partial<TodoItem>) => Promise<void>
   onDeleteTodo: (id: string) => Promise<void>
@@ -226,9 +187,7 @@ function KanbanColumn({
 
   return (
     <div
-      className={`flex flex-col w-[280px] shrink-0 rounded-xl border transition-all duration-200 ${
-        isDragOver ? `${col.border} ring-2 ring-inset ring-stone-200` : `${col.border} bg-white/70`
-      }`}
+      className={`flex flex-col w-[280px] shrink-0 rounded-xl border transition-all duration-200 ${isDragOver ? `${col.border} ring-2 ring-inset ring-stone-200` : `${col.border} bg-white/70`}`}
       onDragOver={e => { e.preventDefault(); setIsDragOver(true); onDragOver(e) }}
       onDragLeave={() => setIsDragOver(false)}
       onDrop={() => { setIsDragOver(false); onDrop(col.key) }}
@@ -237,16 +196,9 @@ function KanbanColumn({
         <div className="flex items-center gap-2">
           <span className={col.color}>{col.icon}</span>
           <span className={`text-xs font-semibold tracking-wide uppercase ${col.color}`}>{col.label}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium ${col.bg} ${col.color} ${col.border}`}>
-            {todos.length}
-          </span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium ${col.bg} ${col.color} ${col.border}`}>{todos.length}</span>
         </div>
-        <button
-          onClick={() => setShowNew(v => !v)}
-          className={`p-1.5 rounded-lg transition-all ${
-            showNew ? `${col.bg} ${col.color}` : `text-stone-400 hover:${col.color} hover:${col.bg}`
-          }`}
-        >
+        <button onClick={() => setShowNew(v => !v)} className={`p-1.5 rounded-lg transition-all ${showNew ? `${col.bg} ${col.color}` : `text-stone-400 hover:${col.color} hover:${col.bg}`}`}>
           <Plus size={13} />
         </button>
       </div>
@@ -254,48 +206,27 @@ function KanbanColumn({
       {showNew && (
         <div className="mx-3 mt-3 p-3 rounded-xl bg-white border border-stone-200 shadow-sm space-y-2">
           <input
-            ref={inputRef}
-            placeholder="Task title"
-            value={newTitle}
+            ref={inputRef} placeholder="Task title" value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") setShowNew(false) }}
             className="w-full bg-transparent text-sm text-stone-800 placeholder-stone-300 outline-none"
           />
           <textarea
-            placeholder="Description (optional)"
-            value={newDesc}
-            onChange={e => setNewDesc(e.target.value)}
-            rows={2}
+            placeholder="Description (optional)" value={newDesc}
+            onChange={e => setNewDesc(e.target.value)} rows={2}
             className="w-full bg-transparent text-xs text-stone-500 placeholder-stone-300 outline-none resize-none"
           />
           <div className="flex gap-2">
-            <select
-              value={newPriority}
-              onChange={e => setNewPriority(e.target.value as Priority)}
-              className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-600 outline-none"
-            >
+            <select value={newPriority} onChange={e => setNewPriority(e.target.value as Priority)} className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-600 outline-none">
               {PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
-            <input
-              type="date"
-              value={newDue}
-              onChange={e => setNewDue(e.target.value)}
-              className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-600 outline-none"
-            />
+            <input type="date" value={newDue} onChange={e => setNewDue(e.target.value)} className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-600 outline-none" />
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleAdd}
-              disabled={saving}
-              className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors disabled:opacity-50"
-              style={{ backgroundColor: boardColor }}
-            >
+            <button onClick={handleAdd} disabled={saving} className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors disabled:opacity-50" style={{ backgroundColor: boardColor }}>
               {saving ? "Saving…" : "Add task"}
             </button>
-            <button
-              onClick={() => setShowNew(false)}
-              className="px-3 py-1.5 rounded-lg bg-stone-100 text-stone-500 text-xs hover:bg-stone-200 transition-colors"
-            >
+            <button onClick={() => setShowNew(false)} className="px-3 py-1.5 rounded-lg bg-stone-100 text-stone-500 text-xs hover:bg-stone-200 transition-colors">
               <X size={12} />
             </button>
           </div>
@@ -306,34 +237,26 @@ function KanbanColumn({
         {todos.length === 0 && !showNew && (
           <div className="text-center py-8 text-stone-300 text-xs">Drop here</div>
         )}
-
         {todos.map(todo => {
           const pri     = priorityOf(todo.priority)
           const overdue = isOverdue(todo.dueDate) && todo.status !== "done"
           const isExp   = expanded === todo.id
+          const cat     = CATEGORIES.find(c => c.label === todo.category)
 
           return (
             <div
-              key={todo.id}
-              draggable
+              key={todo.id} draggable
               onDragStart={() => onDragStart(todo.id, col.key)}
-              className={`group rounded-xl border transition-all duration-150 cursor-pointer bg-[#252d3d] ${
-
-                isExp
-                  ? "border-stone-300 shadow-sm"
-                  : "border-stone-200 hover:border-stone-300 hover:shadow-sm"
-              }`}
+              className={`group rounded-xl border transition-all duration-150 cursor-pointer bg-[#252d3d] ${isExp ? "border-stone-300 shadow-sm" : "border-stone-200 hover:border-stone-300 hover:shadow-sm"}`}
               onClick={() => setExpanded(isExp ? null : todo.id)}
             >
               <div className="p-3">
                 <div className="flex items-start gap-2">
                   <Grip size={12} className="text-stone-300 mt-0.5 shrink-0 cursor-grab" />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium leading-snug ${todo.status === "done" ? "line-through text-white" : "text-white"}`}>
-                      {todo.title}
-                    </p>
+                    <p className={`text-sm font-medium leading-snug ${todo.status === "done" ? "line-through text-gray-400" : "text-white"}`}>{todo.title}</p>
                     {todo.description && !isExp && (
-                      <p className="text-[11px] text-white mt-0.5 line-clamp-1">{todo.description}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{todo.description}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <div className="flex items-center gap-1">
@@ -342,9 +265,11 @@ function KanbanColumn({
                       </div>
                       {todo.dueDate && (
                         <div className={`flex items-center gap-1 text-[10px] ${overdue ? "text-red-400" : "text-stone-400"}`}>
-                          <Calendar size={9} />
-                          {formatDate(todo.dueDate)}
+                          <Calendar size={9} />{formatDate(todo.dueDate)}
                         </div>
+                      )}
+                      {cat && (
+                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${cat.color}`}>{cat.label}</span>
                       )}
                     </div>
                   </div>
@@ -352,48 +277,34 @@ function KanbanColumn({
               </div>
 
               {isExp && (
-                <div
-                  className="border-t border-stone-100 px-3 pb-3 pt-3 space-y-3"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {todo.description && (
-                    <p className="text-xs text-white leading-relaxed">{todo.description}</p>
-                  )}
+                <div className="border-t border-white/5 px-3 pb-3 pt-3 space-y-3" onClick={e => e.stopPropagation()}>
+                  {todo.description && <p className="text-xs text-gray-400 leading-relaxed">{todo.description}</p>}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-1">Status</p>
-                      <select
-                        value={todo.status}
-                        onChange={e => onUpdateTodo(todo.id, { status: e.target.value as Status })}
-                        className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none"
-                      >
+                      <select value={todo.status} onChange={e => onUpdateTodo(todo.id, { status: e.target.value as Status })} className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none">
                         {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                       </select>
                     </div>
                     <div>
                       <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-1">Priority</p>
-                      <select
-                        value={todo.priority}
-                        onChange={e => onUpdateTodo(todo.id, { priority: e.target.value as Priority })}
-                        className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none"
-                      >
+                      <select value={todo.priority} onChange={e => onUpdateTodo(todo.id, { priority: e.target.value as Priority })} className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none">
                         {PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
                       </select>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-1">Due date</p>
-                    <input
-                      type="date"
-                      value={todo.dueDate ?? ""}
-                      onChange={e => onUpdateTodo(todo.id, { dueDate: e.target.value || null })}
-                      className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none"
-                    />
+                    <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-1">Category</p>
+                    <select value={todo.category ?? ""} onChange={e => onUpdateTodo(todo.id, { category: e.target.value || null })} className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none">
+                      <option value="">No category</option>
+                      {CATEGORIES.filter(c => c.label !== "All").map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
+                    </select>
                   </div>
-                  <button
-                    onClick={() => onDeleteTodo(todo.id)}
-                    className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-500 transition-colors"
-                  >
+                  <div>
+                    <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-1">Due date</p>
+                    <input type="date" value={todo.dueDate ?? ""} onChange={e => onUpdateTodo(todo.id, { dueDate: e.target.value || null })} className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-stone-700 outline-none" />
+                  </div>
+                  <button onClick={() => onDeleteTodo(todo.id)} className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-500 transition-colors">
                     <Trash2 size={11} /> Delete task
                   </button>
                 </div>
@@ -406,7 +317,6 @@ function KanbanColumn({
   )
 }
 
-
 export default function Todo() {
   const { user } = useAuth()
   const uid = user?.uid
@@ -415,6 +325,7 @@ export default function Todo() {
   const [todos, setTodos]                 = useState<Record<string, TodoItem[]>>({})
   const [view, setView]                   = useState<View>("boards")
   const [activeBoard, setActiveBoard]     = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useState("All")
   const [loading, setLoading]             = useState(true)
   const [showNewBoard, setShowNewBoard]   = useState(false)
   const [newBoardName, setNewBoardName]   = useState("")
@@ -426,48 +337,31 @@ export default function Todo() {
 
   useEffect(() => {
     if (!uid) return
-
     const q = query(boardsRef(uid), orderBy("createdAt", "asc"))
     const unsubBoards = onSnapshot(q, snap => {
       const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Board))
       setBoards(fetched)
       setLoading(false)
-
       fetched.forEach(board => {
         if (todoUnsubs.current[board.id]) return
         const tq = query(todosRef(uid, board.id), orderBy("createdAt", "desc"))
         todoUnsubs.current[board.id] = onSnapshot(tq, tSnap => {
-          const items = tSnap.docs.map(d => ({
-            id: d.id, boardId: board.id, ...d.data(),
-          } as TodoItem))
+          const items = tSnap.docs.map(d => ({ id: d.id, boardId: board.id, ...d.data() } as TodoItem))
           setTodos(prev => ({ ...prev, [board.id]: items }))
         })
       })
-
       const ids = new Set(fetched.map(b => b.id))
       Object.keys(todoUnsubs.current).forEach(id => {
-        if (!ids.has(id)) {
-          todoUnsubs.current[id]()
-          delete todoUnsubs.current[id]
-        }
+        if (!ids.has(id)) { todoUnsubs.current[id](); delete todoUnsubs.current[id] }
       })
     })
-
-    return () => {
-      unsubBoards()
-      Object.values(todoUnsubs.current).forEach(u => u())
-      todoUnsubs.current = {}
-    }
+    return () => { unsubBoards(); Object.values(todoUnsubs.current).forEach(u => u()); todoUnsubs.current = {} }
   }, [uid])
 
   async function addBoard() {
     if (!uid || !newBoardName.trim() || saving) return
     setSaving(true)
-    const docRef = await addDoc(boardsRef(uid), {
-      name: newBoardName.trim(),
-      color: newBoardColor,
-      createdAt: serverTimestamp(),
-    })
+    const docRef = await addDoc(boardsRef(uid), { name: newBoardName.trim(), color: newBoardColor, createdAt: serverTimestamp() })
     setActiveBoard(docRef.id)
     setNewBoardName(""); setShowNewBoard(false); setSaving(false)
   }
@@ -482,41 +376,28 @@ export default function Todo() {
     if (activeBoard === boardId) { setView("boards"); setActiveBoard(null) }
   }
 
-  async function addTodo(
-    status: Status, title: string,
-    description: string, priority: Priority, dueDate: string,
-  ) {
+  async function addTodo(status: Status, title: string, description: string, priority: Priority, dueDate: string) {
     if (!uid || !activeBoard || !title.trim()) return
     await addDoc(todosRef(uid, activeBoard), {
-      title: title.trim(),
-      description: description.trim() || null,
-      status, priority,
-      dueDate: dueDate || null,
+      title: title.trim(), description: description.trim() || null,
+      status, priority, dueDate: dueDate || null, category: null,
       createdAt: serverTimestamp(),
     })
   }
 
   async function updateTodo(id: string, patch: Partial<TodoItem>) {
     if (!uid || !activeBoard) return
-    setTodos(prev => ({
-      ...prev,
-      [activeBoard]: (prev[activeBoard] ?? []).map(t => t.id === id ? { ...t, ...patch } : t),
-    }))
+    setTodos(prev => ({ ...prev, [activeBoard]: (prev[activeBoard] ?? []).map(t => t.id === id ? { ...t, ...patch } : t) }))
     await updateDoc(todoDocRef(uid, activeBoard, id), patch as Record<string, any>)
   }
 
   async function deleteTodo(id: string) {
     if (!uid || !activeBoard) return
-    setTodos(prev => ({
-      ...prev,
-      [activeBoard]: (prev[activeBoard] ?? []).filter(t => t.id !== id),
-    }))
+    setTodos(prev => ({ ...prev, [activeBoard]: (prev[activeBoard] ?? []).filter(t => t.id !== id) }))
     await deleteDoc(todoDocRef(uid, activeBoard, id))
   }
 
-  function handleDragStart(id: string, from: Status) {
-    dragging.current = { id, from }
-  }
+  function handleDragStart(id: string, from: Status) { dragging.current = { id, from } }
   function handleDrop(toStatus: Status) {
     if (!dragging.current) return
     updateTodo(dragging.current.id, { status: toStatus })
@@ -524,10 +405,9 @@ export default function Todo() {
   }
 
   const board      = boards.find(b => b.id === activeBoard)
-  const boardTodos = activeBoard ? (todos[activeBoard] ?? []) : []
-  const grouped    = Object.fromEntries(
-    STATUSES.map(s => [s.key, boardTodos.filter(t => t.status === s.key)])
-  ) as Record<Status, TodoItem[]>
+  const allTodos   = activeBoard ? (todos[activeBoard] ?? []) : []
+  const boardTodos = allTodos.filter(t => activeCategory === "All" || t.category === activeCategory)
+  const grouped    = Object.fromEntries(STATUSES.map(s => [s.key, boardTodos.filter(t => t.status === s.key)])) as Record<Status, TodoItem[]>
 
   if (view === "boards") {
     return (
@@ -535,13 +415,10 @@ export default function Todo() {
         <div className="px-8 py-6 border-b border-stone-200/80 shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-stone-800">Boards</h1>
-            <span className="text-xs text-stone-400 bg-white border border-stone-200 px-2 py-0.5 rounded-md">
-              {boards.length}
-            </span>
+            <span className="text-xs text-stone-400 bg-white border border-stone-200 px-2 py-0.5 rounded-md">{boards.length}</span>
           </div>
           <p className="text-sm text-stone-400 mt-1">Click a board to open the task view</p>
         </div>
-
         <div className="flex-1 overflow-y-auto px-8 py-6">
           {loading ? (
             <div className="flex items-center justify-center h-48">
@@ -550,64 +427,36 @@ export default function Todo() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {boards.map(b => (
-                <BoardCard
-                  key={b.id}
-                  board={b}
-                  todos={todos[b.id] ?? []}
-                  onClick={() => { setActiveBoard(b.id); setView("board-detail") }}
+                <BoardCard key={b.id} board={b} todos={todos[b.id] ?? []}
+                  onClick={() => { setActiveBoard(b.id); setView("board-detail"); setActiveCategory("All") }}
                   onDelete={e => { e.stopPropagation(); deleteBoard(b.id) }}
                 />
               ))}
-
               {showNewBoard ? (
                 <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-3 shadow-sm">
-                  <input
-                    autoFocus
-                    placeholder="Board name"
-                    value={newBoardName}
+                  <input autoFocus placeholder="Board name" value={newBoardName}
                     onChange={e => setNewBoardName(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") addBoard(); if (e.key === "Escape") setShowNewBoard(false) }}
                     className="w-full bg-transparent text-sm text-stone-800 placeholder-stone-300 outline-none"
                   />
                   <div className="flex gap-2 flex-wrap">
                     {BOARD_COLORS.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => setNewBoardColor(c)}
-                        className={`w-5 h-5 rounded-full transition-all ${
-                          newBoardColor === c
-                            ? "ring-2 ring-stone-800 ring-offset-1 ring-offset-white"
-                            : "opacity-60 hover:opacity-100"
-                        }`}
+                      <button key={c} onClick={() => setNewBoardColor(c)}
+                        className={`w-5 h-5 rounded-full transition-all ${newBoardColor === c ? "ring-2 ring-stone-800 ring-offset-1 ring-offset-white" : "opacity-60 hover:opacity-100"}`}
                         style={{ backgroundColor: c }}
                       />
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={addBoard}
-                      disabled={saving}
-                      className="flex-1 py-1.5 rounded-xl text-white text-xs font-semibold transition-colors disabled:opacity-50"
-                      style={{ backgroundColor: newBoardColor }}
-                    >
+                    <button onClick={addBoard} disabled={saving} className="flex-1 py-1.5 rounded-xl text-white text-xs font-semibold transition-colors disabled:opacity-50" style={{ backgroundColor: newBoardColor }}>
                       {saving ? "Creating…" : "Create"}
                     </button>
-                    <button
-                      onClick={() => setShowNewBoard(false)}
-                      className="px-3 py-1.5 rounded-xl bg-stone-100 text-stone-500 text-xs hover:bg-stone-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
+                    <button onClick={() => setShowNewBoard(false)} className="px-3 py-1.5 rounded-xl bg-stone-100 text-stone-500 text-xs hover:bg-stone-200 transition-colors">Cancel</button>
                   </div>
                 </div>
               ) : (
-                <button
-                  onClick={() => setShowNewBoard(true)}
-                  className="rounded-xl border border-dashed border-stone-200 bg-transparent hover:border-stone-300 hover:bg-white/60 transition-all duration-200 p-5 flex flex-col items-center justify-center gap-2 text-stone-300 hover:text-stone-400 min-h-[160px]"
-                >
-                  <div className="w-8 h-8 rounded-xl border border-stone-200 flex items-center justify-center">
-                    <Plus size={16} />
-                  </div>
+                <button onClick={() => setShowNewBoard(true)} className="rounded-xl border border-dashed border-stone-200 bg-transparent hover:border-stone-300 hover:bg-white/60 transition-all duration-200 p-5 flex flex-col items-center justify-center gap-2 text-stone-300 hover:text-stone-400 min-h-[160px]">
+                  <div className="w-8 h-8 rounded-xl border border-stone-200 flex items-center justify-center"><Plus size={16} /></div>
                   <span className="text-xs">New board</span>
                 </button>
               )}
@@ -621,26 +470,28 @@ export default function Todo() {
   if (view === "board-detail" && board) {
     return (
       <div className="flex flex-col h-full bg-[#eaeaea] font-sans">
-        <div className="px-8 py-5 border-b border-stone-200/80 shrink-0 flex items-center gap-4">
-          <button
-            onClick={() => setView("boards")}
-            className="p-2 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-all"
-          >
+        <div className="px-8 py-5 border-b border-stone-200/80 shrink-0 flex items-center gap-4 flex-wrap">
+          <button onClick={() => setView("boards")} className="p-2 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-all">
             <ArrowLeft size={15} />
           </button>
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: board.color }} />
           <h1 className="text-lg font-semibold text-stone-800 tracking-tight">{board.name}</h1>
-          <span className="text-xs text-stone-400">{boardTodos.length} tasks</span>
+          <span className="text-xs text-stone-400">{allTodos.length} tasks</span>
+
+          <div className="flex gap-1.5 flex-wrap">
+            {CATEGORIES.map(c => (
+              <button key={c.label} onClick={() => setActiveCategory(c.label)}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-colors ${activeCategory === c.label ? c.color + " font-semibold" : "bg-white text-stone-400 border-stone-200 hover:border-stone-300"}`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
 
           <div className="flex gap-2 ml-auto flex-wrap">
-            {STATUSES.map(s => {
-              const count = grouped[s.key].length
-              if (!count) return null
+            {STATUSES.map(s => { const count = grouped[s.key].length; if (!count) return null
               return (
-                <span
-                  key={s.key}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium border ${s.bg} ${s.color} ${s.border}`}
-                >
+                <span key={s.key} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium border ${s.bg} ${s.color} ${s.border}`}>
                   {s.icon} {count}
                 </span>
               )
@@ -649,22 +500,11 @@ export default function Todo() {
         </div>
 
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
-          <div
-            className="flex gap-4 px-8 py-6 h-full"
-            style={{ minWidth: `${STATUSES.length * 300 + 100}px` }}
-          >
+          <div className="flex gap-4 px-8 py-6 h-full" style={{ minWidth: `${STATUSES.length * 300 + 100}px` }}>
             {STATUSES.map(col => (
-              <KanbanColumn
-                key={col.key}
-                col={col}
-                todos={grouped[col.key]}
-                boardColor={board.color}
-                onAddTodo={addTodo}
-                onUpdateTodo={updateTodo}
-                onDeleteTodo={deleteTodo}
-                onDragStart={handleDragStart}
-                onDragOver={e => e.preventDefault()}
-                onDrop={handleDrop}
+              <KanbanColumn key={col.key} col={col} todos={grouped[col.key]} boardColor={board.color}
+                onAddTodo={addTodo} onUpdateTodo={updateTodo} onDeleteTodo={deleteTodo}
+                onDragStart={handleDragStart} onDragOver={e => e.preventDefault()} onDrop={handleDrop}
               />
             ))}
           </div>

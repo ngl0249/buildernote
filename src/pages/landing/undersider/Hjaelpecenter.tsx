@@ -81,7 +81,7 @@ const Hjaelpecenter = () => {
       <div className="bg-[#f4f3f0] py-16 px-6 text-center">
         <h2 className="text-2xl font-bold text-[#1e2433] mb-3">Didn't find the answer?</h2>
         <p className="text-gray-500 mb-6">Our support team typically responds within 24 hours.</p>
-        <a href="mailto:support@buildernote.io" className="bg-[#1e2433] hover:bg-[#252d3d] text-white font-semibold px-8 py-3.5 rounded-xl transition-colors inline-block text-sm">Contact support →</a>
+        <a href="mailto:infobuildernote@gmail.com" className="bg-[#1e2433] hover:bg-[#252d3d] text-white font-semibold px-8 py-3.5 rounded-xl transition-colors inline-block text-sm">Contact support →</a>
       </div>
 
       <div className="bg-[#1e2433] border-t border-white/10 py-8 px-6">

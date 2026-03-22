@@ -7,6 +7,7 @@ import { auth } from "../../../../lib/firebase/firebase"
 import { type UserProfile } from "../../types/index"
 import { useNotifications, type Notification } from "../../hooks/useNotifications"
 import NotificationPanel from "./NotificationPanel"
+import { getIcon } from "../../hooks/BoardIcons"
 
 interface TopbarProps {
   profile:         UserProfile | null
@@ -15,6 +16,7 @@ interface TopbarProps {
   onToggleSidebar: () => void
   boardCount?:     number
   uid?:            string
+  boards?:         { id: string; title: string; slug: string; iconName: string; color: string }[]
 }
 
 const FREE_LIMIT = 100
@@ -28,12 +30,13 @@ const ROLE_COLORS: Record<string, string> = {
 }
 
 const Topbar = ({
-  profile, username, sidebarOpen, onToggleSidebar, boardCount = 0, uid,
+  profile, username, onToggleSidebar, boardCount = 0, uid, boards = [],
 }: TopbarProps) => {
   const navigate  = useNavigate()
   const [menuOpen,  setMenuOpen]  = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [search,    setSearch]    = useState("")
+  const [searchFocused, setSearchFocused] = useState(false)
 
   const bellRef = useRef<HTMLButtonElement>(null) as RefObject<HTMLButtonElement | null>
 
@@ -58,6 +61,10 @@ const Topbar = ({
   const isAtLimit   = boardCount >= FREE_LIMIT
   const barColor    = isAtLimit ? "bg-red-500" : "bg-orange-500"
 
+  const searchResults = search.trim().length > 0
+    ? boards.filter(b => b.title.toLowerCase().includes(search.toLowerCase()))
+    : []
+
   const renderRoleSection = () => {
     if (role === "Owner") {
       return (
@@ -79,16 +86,12 @@ const Topbar = ({
             </div>
           </div>
           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-1.5">
-            <div
-              className="h-full rounded-full bg-orange-500 transition-all duration-500"
-              style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }}
-            />
+            <div className="h-full rounded-full bg-orange-500 transition-all duration-500" style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }} />
           </div>
           <p className="text-[10px] text-gray-600">Unlimited access · Full control</p>
         </div>
       )
     }
-
     if (role === "Developer") {
       return (
         <div className="px-4 py-3 border-b border-white/5">
@@ -109,16 +112,12 @@ const Topbar = ({
             </div>
           </div>
           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-1.5">
-            <div
-              className="h-full rounded-full bg-sky-500 transition-all duration-500"
-              style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }}
-            />
+            <div className="h-full rounded-full bg-sky-500 transition-all duration-500" style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }} />
           </div>
           <p className="text-[10px] text-gray-600">Dev tools enabled · Unlimited boards</p>
         </div>
       )
     }
-
     if (role === "Moderator") {
       return (
         <div className="px-4 py-3 border-b border-white/5">
@@ -139,16 +138,12 @@ const Topbar = ({
             </div>
           </div>
           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-1.5">
-            <div
-              className="h-full rounded-full bg-violet-500 transition-all duration-500"
-              style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }}
-            />
+            <div className="h-full rounded-full bg-violet-500 transition-all duration-500" style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }} />
           </div>
           <p className="text-[10px] text-gray-600">Moderation tools · Unlimited boards</p>
         </div>
       )
     }
-
     if (role === "BuilderPro") {
       return (
         <div className="px-4 py-3 border-b border-white/5">
@@ -169,34 +164,24 @@ const Topbar = ({
             </div>
           </div>
           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-1.5">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }}
-            />
+            <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min((boardCount / Math.max(boardCount, 10)) * 100, 100)}%` }} />
           </div>
           <p className="text-[10px] text-gray-600">Unlimited boards · All pro features</p>
         </div>
       )
     }
-
     return (
       <div className="px-4 py-3 border-b border-white/5">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-400">
-            {isAtLimit ? "Board limit reached" : "Free plan"}
-          </span>
-          <span className={`text-[10px] font-semibold ${isAtLimit ? "text-red-400" : isNearLimit ? "text-orange-400" : "text-gray-500"}`}>
-            {boardCount} / {FREE_LIMIT}
-          </span>
+          <span className="text-xs font-medium text-gray-400">{isAtLimit ? "Board limit reached" : "Free plan"}</span>
+          <span className={`text-[10px] font-semibold ${isAtLimit ? "text-red-400" : isNearLimit ? "text-orange-400" : "text-gray-500"}`}>{boardCount} / {FREE_LIMIT}</span>
         </div>
         <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-2">
           <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-[10px] text-gray-600 mb-2.5">
-          {isAtLimit ? "Delete boards or upgrade to create more." : `${boardCount} used · ${FREE_LIMIT - boardCount} remaining`}
-        </p>
+        <p className="text-[10px] text-gray-600 mb-2.5">{isAtLimit ? "Delete boards or upgrade to create more." : `${boardCount} used · ${FREE_LIMIT - boardCount} remaining`}</p>
         <button
-          onClick={() => { setMenuOpen(false); navigate(`/${username}/upgrade`) }}
+          onClick={() => { setMenuOpen(false); navigate(`/${username}/plans`) }}
           className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${isAtLimit ? "bg-red-500 hover:bg-red-400 text-white" : "bg-orange-500 hover:bg-orange-400 text-white"}`}
         >
           <Zap size={11} />Upgrade for unlimited boards
@@ -211,7 +196,6 @@ const Topbar = ({
         <button
           onClick={onToggleSidebar}
           className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors flex-shrink-0"
-          title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
           <PanelLeft size={16} />
         </button>
@@ -222,15 +206,41 @@ const Topbar = ({
           <span className="text-gray-200 font-medium">home</span>
         </div>
 
-        <div className="flex-1 max-w-xs mx-auto hidden md:flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 hover:border-white/20 transition-colors">
-          <Search size={13} className="text-gray-500 flex-shrink-0" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search boards..."
-            className="flex-1 bg-transparent text-sm text-gray-300 placeholder-gray-600 focus:outline-none"
-          />
-          <span className="text-[10px] text-gray-600 bg-white/5 rounded px-1 hidden lg:block">⌘K</span>
+        <div className="flex-1 max-w-xs mx-auto hidden md:block relative">
+          <div className={`flex items-center gap-2 bg-white/5 border rounded-lg px-3 py-1.5 transition-colors ${searchFocused ? "border-white/20" : "border-white/10 hover:border-white/20"}`}>
+            <Search size={13} className="text-gray-500 flex-shrink-0" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => { setSearchFocused(false); setSearch("") }, 150)}
+              placeholder="Search boards..."
+              className="flex-1 bg-transparent text-sm text-gray-300 placeholder-gray-600 focus:outline-none"
+            />
+            <span className="text-[10px] text-gray-600 bg-white/5 rounded px-1 hidden lg:block">⌘K</span>
+          </div>
+
+          {searchFocused && search.trim().length > 0 && (
+            <div className="absolute top-10 left-0 right-0 bg-[#1e2433] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+              {searchResults.length === 0 ? (
+                <div className="px-4 py-3 text-xs text-gray-500">No boards found</div>
+              ) : searchResults.map(b => {
+                const Icon = getIcon(b.iconName)
+                return (
+                  <button
+                    key={b.id}
+                    onMouseDown={() => { navigate(`/${username}/board/${b.slug}`); setSearch("") }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: b.color + "22" }}>
+                      <Icon size={13} style={{ color: b.color }} />
+                    </div>
+                    <span className="text-sm text-gray-300 truncate">{b.title}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
@@ -238,7 +248,6 @@ const Topbar = ({
             ref={bellRef as RefObject<HTMLButtonElement>}
             onClick={() => { setNotifOpen(v => !v); setMenuOpen(false) }}
             className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${notifOpen ? "bg-white/10 text-white" : "hover:bg-white/10 text-gray-500 hover:text-white"}`}
-            title="Notifications"
           >
             <Bell size={16} />
             {unreadCount > 0 && (
@@ -260,9 +269,7 @@ const Topbar = ({
                   <span className="text-white text-[9px] font-bold">{initials}</span>
                 </div>
               )}
-              <span className="text-sm text-gray-300 font-medium hidden md:block max-w-[90px] truncate">
-                {profile?.displayName ?? "Builder"}
-              </span>
+              <span className="text-sm text-gray-300 font-medium hidden md:block max-w-[90px] truncate">{profile?.displayName ?? "Builder"}</span>
               <ChevronDown size={12} className="text-gray-500 hidden md:block" />
             </button>
 
@@ -285,26 +292,17 @@ const Topbar = ({
                       </div>
                     </div>
                     {profile?.role && (
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${ROLE_COLORS[profile.role]}`}>
-                        {profile.role}
-                      </span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${ROLE_COLORS[profile.role]}`}>{profile.role}</span>
                     )}
                   </div>
 
                   {renderRoleSection()}
 
                   <div className="py-1">
-                    <Link
-                      to={`/${username}/profile`}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
-                    >
+                    <Link to={`/${username}/profile`} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors">
                       <Settings size={14} />Profile settings
                     </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500/80 hover:bg-red-500/10 hover:text-red-400 transition-colors"
-                    >
+                    <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500/80 hover:bg-red-500/10 hover:text-red-400 transition-colors">
                       <LogOut size={14} />Sign out
                     </button>
                   </div>

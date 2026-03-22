@@ -16,6 +16,8 @@ export interface BoardMember {
   avatarUrl?:   string
 }
 
+const UNLIMITED_ROLES = ["Owner", "Developer", "Moderator", "BuilderPro"]
+const DEFAULT_INVITE_LIMIT = 5
 
 export const fetchUserProfile = async (uid: string): Promise<{
   displayName?: string
@@ -51,10 +53,9 @@ export const fetchUserProfile = async (uid: string): Promise<{
   }
 }
 
-
 export const useTeam = (
-  ownerUid: string | undefined,
-  boardId:  string | undefined,
+  ownerUid:  string | undefined,
+  boardId:   string | undefined,
 ) => {
   const [members, setMembers] = useState<BoardMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,11 +90,33 @@ export const useTeam = (
     boardColor:     string,
     targetUsername: string,
     role: MemberRole = "editor",
+    inviterRole: string = "Default",
   ): Promise<{ ok: boolean; error: string | null }> => {
     if (!ownerUid || !boardId) return { ok: false, error: "Missing board" }
 
     const clean = targetUsername.toLowerCase().replace(/^@/, "").trim()
     if (!clean) return { ok: false, error: "Ugyldigt brugernavn" }
+
+    if (!UNLIMITED_ROLES.includes(inviterRole)) {
+      const boardsSnap = await getDocs(
+        collection(db, "users", ownerUid, "boards")
+      )
+      let totalMembers = 0
+      await Promise.all(
+        boardsSnap.docs.map(async boardDoc => {
+          const membersSnap = await getDocs(
+            collection(db, "users", ownerUid, "boards", boardDoc.id, "members")
+          )
+          totalMembers += membersSnap.size
+        })
+      )
+      if (totalMembers >= DEFAULT_INVITE_LIMIT) {
+        return {
+          ok: false,
+          error: `Default-brugere kan max invitere ${DEFAULT_INVITE_LIMIT} medlemmer i alt. Opgradér til BuilderPro for ubegrænset adgang.`,
+        }
+      }
+    }
 
     const usersQuery = query(
       collection(db, "users"),
