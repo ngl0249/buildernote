@@ -12,7 +12,7 @@ const UPCOMING = [
   },
   { status: "Planned", statusColor: "bg-blue-500/10 text-blue-400 border-blue-500/20", title: "AI assistant", desc: "Let AI summarize boards, suggest next tasks and write notes faster than ever.", eta: "Q3 2026" },
   { status: "Planned", statusColor: "bg-blue-500/10 text-blue-400 border-blue-500/20", title: "GitHub integration", desc: "Connect your repos and see issues, pull requests and commits directly on your boards.", eta: "Q3 2026" },
-  { status: "In Development", statusColor: "bg-gray-500/10 text-gray-400 border-gray-500/20", title: "Board templates", desc: "Get started quickly with ready-made templates for sprint planning, onboarding, brand kits and more.", eta: "Q4 2026" },
+  { status: "In development", statusColor: "bg-gray-500/10 text-gray-400 border-gray-500/20", title: "Board templates", desc: "Get started quickly with ready-made templates for sprint planning, onboarding, brand kits and more.", eta: "Q4 2026" },
   {
   status: "Planned",
   statusColor: "bg-pink-100 text-pink-500 border-pink-200",
