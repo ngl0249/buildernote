@@ -2,15 +2,7 @@ import { useRef, useState, useCallback } from "react"
 import {
   Upload, X, FileText, Film, Image as ImageIcon,
   CheckCircle2, AlertCircle, Loader2, Grip, Trash2,
-  HardDrive, Sparkles,
 } from "lucide-react"
-import { useAuth } from "../../../hooks/useAuth"
-import {
-  useCloudinaryUpload,
-  formatBytes,
-  storagePct,
-  type UploadedFile,
-} from "../../../hooks/useCloudinaryUpload"
 import { type BoardCard } from "../../../types/index"
 
 interface CardShell {
@@ -22,9 +14,25 @@ interface CardShell {
   onDeselect:  () => void
 }
 
+type UploadedFile = {
+  url: string
+  name: string
+  resourceType: "image" | "video" | "raw"
+  format: string
+  bytes: number
+  publicId: string
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
 function getFileIcon(type: UploadedFile["resourceType"]) {
-  if (type === "video")  return <Film    size={14} className="text-purple-400" />
-  if (type === "image")  return <ImageIcon size={14} className="text-sky-400" />
+  if (type === "video") return <Film size={14} className="text-purple-400" />
+  if (type === "image") return <ImageIcon size={14} className="text-sky-400" />
   return <FileText size={14} className="text-stone-400" />
 }
 
@@ -34,21 +42,8 @@ function FilePreview({ file, onRemove }: { file: UploadedFile; onRemove: () => v
 
   return (
     <div className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#1a1f2e]">
-      {isImage && (
-        <img
-          src={file.url}
-          alt={file.name}
-          className="w-full object-cover max-h-48"
-          draggable={false}
-        />
-      )}
-      {isVideo && (
-        <video
-          src={file.url}
-          controls
-          className="w-full max-h-48 bg-black"
-        />
-      )}
+      {isImage && <img src={file.url} alt={file.name} className="w-full object-cover max-h-48" draggable={false} />}
+      {isVideo && <video src={file.url} controls className="w-full max-h-48 bg-black" />}
       {!isImage && !isVideo && (
         <div className="flex items-center gap-3 px-3 py-3">
           {getFileIcon(file.resourceType)}
@@ -76,43 +71,6 @@ function FilePreview({ file, onRemove }: { file: UploadedFile; onRemove: () => v
           <X size={11} />
         </button>
       </div>
-
-      {(isImage || isVideo) && (
-        <div className="absolute bottom-0 left-0 right-0 px-2.5 py-1.5 bg-gradient-to-t from-black/70 to-transparent">
-          <p className="text-[10px] text-white/70 truncate">{file.name} · {formatBytes(file.bytes)}</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StorageMeter({ used, limit, isUnlimited }: {
-  used: number; limit: number | null; isUnlimited: boolean
-}) {
-  const pct = storagePct(used, limit)
-  const color = pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "#22c55e"
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 border-t border-white/5">
-      <HardDrive size={10} className="text-gray-600 shrink-0" />
-      {isUnlimited ? (
-        <div className="flex items-center gap-1 flex-1">
-          <span className="text-[10px] text-emerald-400 font-medium">Ubegrænset lagerplads</span>
-          <Sparkles size={9} className="text-emerald-400" />
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center gap-2">
-          <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, backgroundColor: color }}
-            />
-          </div>
-          <span className="text-[10px] text-gray-500 shrink-0 tabular-nums">
-            {formatBytes(used)} / 1 GB
-          </span>
-        </div>
-      )}
     </div>
   )
 }
@@ -120,19 +78,10 @@ function StorageMeter({ used, limit, isUnlimited }: {
 export default function UploadCard({
   card, onUpdate, onDelete, onMouseDown, onSelect, onDeselect,
 }: CardShell) {
-  const { user, profile } = useAuth()
-  const userRole = profile?.role ?? "Default"
-
-  const { upload, freeBytes, storageInfo, loadingUsage } =
-    useCloudinaryUpload(user?.uid, userRole)
-
-  const [isDragOver, setIsDragOver]   = useState(false)
-  const [progress,   setProgress]     = useState<number | null>(null)
-  const [feedback,   setFeedback]     = useState<{ ok: boolean; msg: string } | null>(null)
-  const [files, setFiles] = useState<UploadedFile[]>(
-    () => (card.content ? JSON.parse(card.content) : [])
-  )
-
+  const [files, setFiles] = useState<UploadedFile[]>(() => (card.content ? JSON.parse(card.content) : []))
+  const [progress, setProgress] = useState<number | null>(null)
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -146,30 +95,53 @@ export default function UploadCard({
     const arr = Array.from(fileList)
     for (const file of arr) {
       setProgress(0)
-      const res = await upload(file, pct => setProgress(pct))
-      setProgress(null)
-      if (res.ok) {
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("upload_preset", "YOUR_UNSIGNED_UPLOAD_PRESET") // <-- Ændr til din preset
+
+        const res = await fetch("https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/upload", {
+          method: "POST",
+          body: formData,
+        })
+        if (!res.ok) throw new Error("Upload fejlede")
+
+        const data = await res.json()
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+        const videoExts = ["mp4", "webm", "ogg", "mov"]
+        const resourceType: UploadedFile["resourceType"] = videoExts.includes(ext) ? "video" : "image"
+
+        const uploadedFile: UploadedFile = {
+          url: data.secure_url,
+          name: file.name,
+          resourceType,
+          format: ext,
+          bytes: file.size,
+          publicId: data.public_id,
+        }
+
         setFiles(prev => {
-          const next = [...prev, res.file]
+          const next = [...prev, uploadedFile]
           onUpdate({ content: JSON.stringify(next) })
           return next
         })
         showFeedback(true, `"${file.name}" uploadet`)
-      } else {
-        showFeedback(false, res.error)
+      } catch (err: any) {
+        console.error(err)
+        showFeedback(false, err.message ?? "Upload fejlede")
+      } finally {
+        setProgress(null)
       }
     }
-  }, [upload, onUpdate])
+  }, [onUpdate])
 
-  const handleRemove = async (idx: number) => {
-    const removed = files[idx]
+  const handleRemove = (idx: number) => {
     const next = files.filter((_, i) => i !== idx)
     setFiles(next)
     onUpdate({ content: JSON.stringify(next) })
-    await freeBytes(removed.bytes)
   }
 
-  const w = card.width  ?? 300
+  const w = card.width ?? 300
 
   return (
     <div
@@ -197,9 +169,7 @@ export default function UploadCard({
 
         <div
           className={`relative mx-3 mt-3 rounded-xl border-2 border-dashed transition-all duration-150 cursor-pointer ${
-            isDragOver
-              ? "border-orange-500/60 bg-orange-500/5"
-              : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
+            isDragOver ? "border-orange-500/60 bg-orange-500/5" : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
           }`}
           onClick={() => inputRef.current?.click()}
           onDragOver={e => { e.preventDefault(); setIsDragOver(true) }}
@@ -235,49 +205,25 @@ export default function UploadCard({
                 <Upload size={16} className={isDragOver ? "text-orange-400" : "text-gray-500"} />
               </div>
               <div className="text-center">
-                <p className="text-[11px] font-medium text-gray-400">
-                  {isDragOver ? "Slip for at uploade" : "Klik eller træk filer hertil"}
-                </p>
+                <p className="text-[11px] font-medium text-gray-400">{isDragOver ? "Slip for at uploade" : "Klik eller træk filer hertil"}</p>
                 <p className="text-[10px] text-gray-600 mt-0.5">Billeder, video, dokumenter</p>
               </div>
             </div>
           )}
         </div>
+
         {feedback && (
-          <div className={`mx-3 mt-2 flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-medium ${
-            feedback.ok
-              ? "bg-emerald-500/10 text-emerald-400"
-              : "bg-red-500/10 text-red-400"
-          }`}>
-            {feedback.ok
-              ? <CheckCircle2 size={11} />
-              : <AlertCircle size={11} />}
+          <div className={`mx-3 mt-2 flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-medium ${feedback.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+            {feedback.ok ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
             {feedback.msg}
           </div>
         )}
 
         {files.length > 0 && (
           <div className="px-3 mt-2 space-y-2 max-h-64 overflow-y-auto">
-            {files.map((f, i) => (
-              <FilePreview key={f.publicId} file={f} onRemove={() => handleRemove(i)} />
-            ))}
+            {files.map((f, i) => <FilePreview key={f.publicId} file={f} onRemove={() => handleRemove(i)} />)}
           </div>
         )}
-
-        <div className="mt-3">
-          {loadingUsage ? (
-            <div className="px-3 py-2 border-t border-white/5">
-              <div className="h-1 w-24 bg-white/5 rounded-full animate-pulse" />
-            </div>
-          ) : (
-            <StorageMeter
-              used={storageInfo.usedBytes}
-              limit={storageInfo.limitBytes}
-              isUnlimited={storageInfo.isUnlimited}
-            />
-          )}
-        </div>
-
       </div>
     </div>
   )
