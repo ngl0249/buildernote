@@ -41,6 +41,7 @@ export default function ImageCard({
   const [urlInput,  setUrlInput]  = useState("")
   const [lightbox,  setLightbox]  = useState(false)
   const [imgError,  setImgError]  = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const isResizing = useRef(false)
   const resizeStart = useRef({ mx: 0, my: 0, w: 0, h: 0 })
@@ -69,6 +70,40 @@ export default function ImageCard({
     window.addEventListener("mousemove", onMove)
     window.addEventListener("mouseup", onUp)
   }, [card.width, card.height, onUpdate])
+
+  // **Cloudinary Upload**
+  const handleFileUpload = async (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("upload_preset", "buildernote")
+    setUploading(true)
+
+    try {
+      const res = await fetch("https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+      const videoExts = ["mp4", "webm", "ogg", "mov"]
+      const resourceType: MediaData["resourceType"] = videoExts.includes(ext) ? "video" : "image"
+
+      const newMedia: MediaData = {
+        url: data.secure_url,
+        name: file.name,
+        resourceType,
+        format: ext,
+        bytes: file.size,
+      }
+
+      onUpdate({ content: JSON.stringify(newMedia) })
+      setImgError(false)
+    } catch (err) {
+      console.error("Upload fejlede:", err)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSetUrl = () => {
     if (!urlInput.trim()) return
@@ -176,7 +211,7 @@ export default function ImageCard({
                   <ImageIcon size={18} className="text-gray-600" />
                 </div>
                 <p className="text-[11px] text-gray-600 text-center leading-snug">
-                  Indsæt en billed- eller medie-URL
+                  Indsæt en billed-URL eller upload en fil
                 </p>
                 <div className="w-full flex gap-1.5">
                   <input
@@ -193,6 +228,18 @@ export default function ImageCard({
                   >
                     OK
                   </button>
+                  <input
+                    type="file"
+                    onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                    className="hidden"
+                    id={`upload-${card.id}`}
+                  />
+                  <label
+                    htmlFor={`upload-${card.id}`}
+                    className={`px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+                  >
+                    {uploading ? "Uploader..." : "Upload"}
+                  </label>
                 </div>
               </div>
             ) : media.resourceType === "image" ? (

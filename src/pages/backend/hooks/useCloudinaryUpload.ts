@@ -6,7 +6,7 @@ const CLOUD_NAME    = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME as str
 const UPLOAD_PRESET = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET as string
 
 const UNLIMITED_ROLES = ["Owner", "Developer", "Moderator", "BuilderPro"]
-const DEFAULT_LIMIT_BYTES = 1 * 1024 * 1024 * 1024 // 1 GB
+const DEFAULT_LIMIT_BYTES = 1 * 1024 * 1024 * 1024
 
 export type UploadedFile = {
   url:          string
