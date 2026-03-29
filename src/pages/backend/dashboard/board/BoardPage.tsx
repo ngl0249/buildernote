@@ -4,7 +4,7 @@ import {
   AlignLeft, Link2, CheckSquare, Heading,
   Trash2, ArrowLeft,
   Palette, FileText, Columns, MessageSquare, Table,
-  Users, Upload, Image as ImageIcon,
+  Users, Image as ImageIcon,
 } from "lucide-react"
 import type { RefObject } from "react"
 import { collection, query, where, getDocs, onSnapshot, doc, getDoc, setDoc, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore"
@@ -27,7 +27,7 @@ import DocumentCard from "./cards/Documentcard"
 import ColumnCard from "./cards/Columncard"
 import CommentCard from "./cards/Commentcard"
 import TableCard from "./cards/Tablecard"
-import UploadCard from "./cards/Upload"
+// import UploadCard from "./cards/Upload"
 import ImageCard from "./cards/Image"
 
 interface PresenceUser {
@@ -353,7 +353,7 @@ const BoardPage = () => {
           {[
             { Icon: Palette,       label: "Color",   type: "color"   },
             { Icon: MessageSquare, label: "Comment", type: "comment" },
-            { Icon: Upload,        label: "Upload",  type: "upload"  },
+            // { Icon: Upload,        label: "Upload",  type: "upload"  },
             { Icon: ImageIcon,     label: "Image",   type: "image"   },
           ].map(({ Icon, label, type }) => (
             <button
@@ -510,7 +510,7 @@ const BoardPage = () => {
               if (card.type === "column")   return <ColumnCard   key={card.id} {...sharedProps} />
               if (card.type === "comment")  return <CommentCard  key={card.id} {...sharedProps} />
               if (card.type === "table")    return <TableCard    key={card.id} {...sharedProps} />
-              if (card.type === "upload")   return <UploadCard   key={card.id} {...sharedProps} />
+              // if (card.type === "upload")   return <UploadCard   key={card.id} {...sharedProps} />
               if (card.type === "image")    return <ImageCard    key={card.id} {...sharedProps} />
               return null
             })}
