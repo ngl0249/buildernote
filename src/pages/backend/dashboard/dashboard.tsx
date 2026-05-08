@@ -35,12 +35,14 @@ const Dashboard = () => {
   useOnlinePresence(user?.uid)
 
   useEffect(() => {
+    if (!user) return 
+
     const unsub = onSnapshot(doc(db, "config", "siteStatus"), snap => {
       setSiteOnline(snap.exists() ? (snap.data().online ?? true) : true)
       setDashboardOnline(snap.exists() ? (snap.data().dashboardOnline ?? true) : true)
     })
     return () => unsub()
-  }, [])
+  }, [user])
 
   if (loading || siteOnline === null) {
     return (
